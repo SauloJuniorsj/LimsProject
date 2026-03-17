@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: lims_db
+    ports:
+      - "5432:5432"
+  broker:
+      image: rabbitmq:3-management
+      ports:
+        - "5672:5672"
+        - "15672:15672" # Painel de controle do Rabbit
