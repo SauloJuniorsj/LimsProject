@@ -16,6 +16,8 @@ builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddScoped<IRollupService, RollupService>();
+builder.Services.AddHostedService<RollupWorker>();
 var app = builder.Build();
 
 // Criar novo Lote (Seed-to-Sale)
