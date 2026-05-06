@@ -59,6 +59,11 @@ app.MapTraceabilityEndpoints();
 app.MapDebugEndpoints();
 
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "LIMS Seed-to-Sale API v1");
+    options.DocumentTitle = "LIMS API Docs";
+    options.DisplayRequestDuration();
+});
 
 app.Run();

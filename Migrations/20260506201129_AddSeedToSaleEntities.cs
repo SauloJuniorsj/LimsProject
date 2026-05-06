@@ -287,6 +287,35 @@ namespace LimsProject.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
+            // Backfill de dados legados: batches antigos não tinham SeedLotId.
+            // Criamos 1 strain placeholder + 1 seed lot por batch antigo para satisfazer FK.
+            migrationBuilder.Sql("""
+                INSERT INTO "Strains" ("Id", "Name", "Type", "ThcMaxLimit", "IsHemp", "CreatedAt")
+                SELECT '11111111-1111-1111-1111-111111111111'::uuid, 'Legacy Imported', 2, 35, FALSE, NOW()
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM "Strains" WHERE "Id" = '11111111-1111-1111-1111-111111111111'::uuid
+                );
+
+                INSERT INTO "SeedLots" ("Id", "StrainId", "Supplier", "LotCode", "Quantity", "ReceivedAt", "CreatedAt")
+                SELECT
+                    b."Id",
+                    '11111111-1111-1111-1111-111111111111'::uuid,
+                    'Legacy Import',
+                    'LEGACY-' || REPLACE(b."Id"::text, '-', ''),
+                    1,
+                    NOW(),
+                    NOW()
+                FROM "Batches" b
+                LEFT JOIN "SeedLots" s ON s."Id" = b."SeedLotId"
+                WHERE b."SeedLotId" = '00000000-0000-0000-0000-000000000000'::uuid
+                   OR s."Id" IS NULL;
+
+                UPDATE "Batches" b
+                SET "SeedLotId" = b."Id"
+                WHERE b."SeedLotId" = '00000000-0000-0000-0000-000000000000'::uuid
+                   OR NOT EXISTS (SELECT 1 FROM "SeedLots" s WHERE s."Id" = b."SeedLotId");
+                """);
+
             migrationBuilder.CreateTable(
                 name: "CuringRecords",
                 columns: table => new
@@ -435,6 +464,19 @@ namespace LimsProject.Migrations
                 name: "IX_Strains_Name",
                 table: "Strains",
                 column: "Name");
+
+            // Saneamento global para evitar falhas de FK em bases legadas
+            // (dados órfãos em tabelas antigas que já existiam antes desta migration).
+            migrationBuilder.Sql("""
+                DELETE FROM "SensorData" sd
+                WHERE NOT EXISTS (SELECT 1 FROM "Batches" b WHERE b."Id" = sd."BatchId");
+
+                DELETE FROM "LabAnalyses" la
+                WHERE NOT EXISTS (SELECT 1 FROM "Batches" b WHERE b."Id" = la."BatchId");
+
+                DELETE FROM "BatchesDailySumaries" bs
+                WHERE NOT EXISTS (SELECT 1 FROM "Batches" b WHERE b."Id" = bs."BatchId");
+                """);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_Batches_SeedLots_SeedLotId",
