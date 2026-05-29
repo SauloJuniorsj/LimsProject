@@ -25,7 +25,7 @@ public static class AuthEndpoints
             return token is null
                 ? Results.Unauthorized()
                 : Results.Ok(new { token });
-        }).AllowAnonymous();
+        }).AllowAnonymous().RequireRateLimiting("login");
     }
 }
 

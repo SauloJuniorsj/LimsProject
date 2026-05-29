@@ -1,5 +1,7 @@
 using System.Reflection;
 using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using LimsProject.API.Endpoints;
 using LimsProject.Application.Interfaces;
 using LimsProject.Application.Services;
@@ -65,6 +67,19 @@ builder.Services.AddScoped<IRollupService, RollupService>();
 builder.Services.AddHostedService<RollupWorker>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+// Rate limiting — proteção contra brute-force no login
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("login", o =>
+    {
+        o.PermitLimit = builder.Configuration.GetValue<int>("RateLimit:LoginPerMinute", 30);
+        o.Window = TimeSpan.FromMinutes(1);
+        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        o.QueueLimit = 0;
+    });
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 
 // Problem Details — respostas de erro padronizadas (RFC 7807)
 builder.Services.AddProblemDetails();
@@ -141,12 +156,14 @@ app.UseStatusCodePages();
 app.UseSwagger();
 app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "LIMS API v1"));
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health").AllowAnonymous();
 app.MapAuthEndpoints();
 app.MapBatchEndpoints();
+app.MapSensorDataEndpoints();
 app.MapAnalysisEndpoints();
 app.MapDebugEndpoints();
 

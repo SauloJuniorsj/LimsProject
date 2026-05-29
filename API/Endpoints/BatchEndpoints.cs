@@ -95,6 +95,32 @@ public static class BatchEndpoints
             await db.SaveChangesAsync();
             return Results.NoContent();
         }).RequireAuthorization("AdminOnly");
+
+        app.MapGet("/batches/{id}/daily-summaries", async (
+            Guid id,
+            ILimsDbContext db,
+            DateTime? from = null,
+            DateTime? to = null) =>
+        {
+            var exists = await db.Batches.AsNoTracking().AnyAsync(b => b.Id == id);
+            if (!exists) return Results.NotFound("Lote não encontrado.");
+
+            var query = db.BatchesDailySummaries
+                .AsNoTracking()
+                .Where(s => s.BatchId == id);
+
+            if (from.HasValue)
+                query = query.Where(s => s.Date >= from.Value.Date);
+
+            if (to.HasValue)
+                query = query.Where(s => s.Date <= to.Value.Date);
+
+            var summaries = await query
+                .OrderByDescending(s => s.Date)
+                .ToListAsync();
+
+            return Results.Ok(summaries);
+        }).RequireAuthorization();
     }
 }
 
