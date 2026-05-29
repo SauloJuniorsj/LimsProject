@@ -1,4 +1,6 @@
-﻿public enum BatchStatus { Germination, Growth, Harvested, Testing, Released, Rejected }
+using LimsProject.Domain.Enums;
+
+namespace LimsProject.Domain.Entities;
 
 public class Batch
 {
@@ -6,12 +8,10 @@ public class Batch
     public string Strain { get; set; } = string.Empty;
     public BatchStatus Status { get; set; } = BatchStatus.Germination;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    // Dados de Laboratório (LIMS)
     public decimal? ThcPercentage { get; set; }
     public decimal? CbdPercentage { get; set; }
     public bool HasContaminants { get; set; }
-    public decimal? CurrentMoisture{ get; set; }
-    public decimal? CurrentTemperature{ get; set; }
-    public decimal AvarageTemperature { get; set; }
+    public decimal? CurrentMoisture { get; set; }
+    public decimal? CurrentTemperature { get; set; }
+    public decimal AverageTemperature { get; set; }
 }

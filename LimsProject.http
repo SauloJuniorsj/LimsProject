@@ -1,6 +1,0 @@
-@LimsProject_HostAddress = http://localhost:5133
-
-GET {{LimsProject_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
