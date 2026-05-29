@@ -32,6 +32,6 @@ public static class DebugEndpoints
 
             await db.SaveChangesAsync();
             return Results.Ok("3 Lotes e 60 Logs gerados com Bogus!");
-        });
+        }).RequireAuthorization("AdminOnly");
     }
 }

@@ -9,21 +9,30 @@ namespace LimsProjectTests.Integration;
 public class AnalysisEndpointsTests(LimsWebApplicationFactory factory)
     : IClassFixture<LimsWebApplicationFactory>
 {
-    private readonly HttpClient _client = factory.CreateClient();
-
-    private async Task<Guid> CriarLoteAsync(string strain = "Dill")
+    private async Task<Guid> CriarLoteAsync(HttpClient adminClient, string strain = "Dill")
     {
-        var response = await _client.PostAsJsonAsync("/batches", new { strain });
+        var response = await adminClient.PostAsJsonAsync("/batches", new { strain });
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         return body.GetProperty("id").GetGuid();
     }
 
     [Fact]
+    public async Task POST_Analysis_Retorna401_SemToken()
+    {
+        var client = factory.CreateClient();
+        var response = await client.PostAsJsonAsync($"/batches/{Guid.NewGuid()}/analysis",
+            new { thc = 0.2, cbd = 5.0, terpenes = "citrus", isPassed = true });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task POST_Analysis_Retorna404_QuandoLoteNaoExiste()
     {
+        var client = await factory.CreateAuthenticatedClientAsync("Lab");
         var payload = new { thc = 0.2, cbd = 5.0, terpenes = "citrus", isPassed = true };
 
-        var response = await _client.PostAsJsonAsync($"/batches/{Guid.NewGuid()}/analysis", payload);
+        var response = await client.PostAsJsonAsync($"/batches/{Guid.NewGuid()}/analysis", payload);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -31,10 +40,12 @@ public class AnalysisEndpointsTests(LimsWebApplicationFactory factory)
     [Fact]
     public async Task POST_Analysis_Retorna400_QuandoTHCNegativo()
     {
-        var id = await CriarLoteAsync();
-        var payload = new { thc = -1.0, cbd = 5.0, terpenes = "citrus", isPassed = false };
+        var adminClient = await factory.CreateAuthenticatedClientAsync("Admin");
+        var labClient = await factory.CreateAuthenticatedClientAsync("Lab");
+        var id = await CriarLoteAsync(adminClient);
 
-        var response = await _client.PostAsJsonAsync($"/batches/{id}/analysis", payload);
+        var response = await labClient.PostAsJsonAsync($"/batches/{id}/analysis",
+            new { thc = -1.0, cbd = 5.0, terpenes = "citrus", isPassed = false });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -42,11 +53,13 @@ public class AnalysisEndpointsTests(LimsWebApplicationFactory factory)
     [Fact]
     public async Task POST_Analysis_Retorna400_QuandoHempComplianceFalhar()
     {
-        var id = await CriarLoteAsync();
-        // THC > 0.3 e IsPassed = true viola a regra de cânhamo
-        var payload = new { thc = 0.8, cbd = 2.0, terpenes = "earthy", isPassed = true };
+        var adminClient = await factory.CreateAuthenticatedClientAsync("Admin");
+        var labClient = await factory.CreateAuthenticatedClientAsync("Lab");
+        var id = await CriarLoteAsync(adminClient);
 
-        var response = await _client.PostAsJsonAsync($"/batches/{id}/analysis", payload);
+        // THC > 0.3 e IsPassed = true viola a regra de cânhamo
+        var response = await labClient.PostAsJsonAsync($"/batches/{id}/analysis",
+            new { thc = 0.8, cbd = 2.0, terpenes = "earthy", isPassed = true });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -54,29 +67,32 @@ public class AnalysisEndpointsTests(LimsWebApplicationFactory factory)
     [Fact]
     public async Task POST_Analysis_Retorna201_EAlteraStatusParaReleased_QuandoAprovado()
     {
-        var id = await CriarLoteAsync();
-        var payload = new { thc = 0.2, cbd = 8.0, terpenes = "citrus", isPassed = true };
+        var adminClient = await factory.CreateAuthenticatedClientAsync("Admin");
+        var labClient = await factory.CreateAuthenticatedClientAsync("Lab");
+        var id = await CriarLoteAsync(adminClient);
 
-        var response = await _client.PostAsJsonAsync($"/batches/{id}/analysis", payload);
+        var response = await labClient.PostAsJsonAsync($"/batches/{id}/analysis",
+            new { thc = 0.2, cbd = 8.0, terpenes = "citrus", isPassed = true });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        // Verifica que o lote foi para Released (status = 4)
-        var summary = await _client.GetFromJsonAsync<JsonElement>($"/batches/{id}/summary");
+        var summary = await adminClient.GetFromJsonAsync<JsonElement>($"/batches/{id}/summary");
         summary.GetProperty("status").GetInt32().Should().Be(4); // BatchStatus.Released
     }
 
     [Fact]
     public async Task POST_Analysis_Retorna201_EAlteraStatusParaRejected_QuandoReprovado()
     {
-        var id = await CriarLoteAsync();
-        var payload = new { thc = 0.2, cbd = 1.0, terpenes = "skunky", isPassed = false };
+        var adminClient = await factory.CreateAuthenticatedClientAsync("Admin");
+        var labClient = await factory.CreateAuthenticatedClientAsync("Lab");
+        var id = await CriarLoteAsync(adminClient);
 
-        var response = await _client.PostAsJsonAsync($"/batches/{id}/analysis", payload);
+        var response = await labClient.PostAsJsonAsync($"/batches/{id}/analysis",
+            new { thc = 0.2, cbd = 1.0, terpenes = "skunky", isPassed = false });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var summary = await _client.GetFromJsonAsync<JsonElement>($"/batches/{id}/summary");
+        var summary = await adminClient.GetFromJsonAsync<JsonElement>($"/batches/{id}/summary");
         summary.GetProperty("status").GetInt32().Should().Be(5); // BatchStatus.Rejected
     }
 }

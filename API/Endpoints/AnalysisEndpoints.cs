@@ -30,6 +30,6 @@ public static class AnalysisEndpoints
 
             await db.SaveChangesAsync();
             return Results.Created($"/analysis/{analysis.Id}", analysis);
-        });
+        }).RequireAuthorization("LabOrAdmin");
     }
 }

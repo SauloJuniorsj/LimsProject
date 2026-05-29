@@ -9,14 +9,11 @@ namespace LimsProjectTests.Integration;
 public class BatchEndpointsTests(LimsWebApplicationFactory factory)
     : IClassFixture<LimsWebApplicationFactory>
 {
-    private readonly HttpClient _client = factory.CreateClient();
-
     [Fact]
     public async Task POST_Batches_Retorna201_ComLoteValido()
     {
-        var payload = new { strain = "White Widow" };
-
-        var response = await _client.PostAsJsonAsync("/batches", payload);
+        var client = await factory.CreateAuthenticatedClientAsync("Admin");
+        var response = await client.PostAsJsonAsync("/batches", new { strain = "White Widow" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         response.Headers.Location.Should().NotBeNull();
@@ -25,9 +22,8 @@ public class BatchEndpointsTests(LimsWebApplicationFactory factory)
     [Fact]
     public async Task POST_Batches_RetornaLoteCriado_NoBody()
     {
-        var payload = new { strain = "Mint" };
-
-        var response = await _client.PostAsJsonAsync("/batches", payload);
+        var client = await factory.CreateAuthenticatedClientAsync("Admin");
+        var response = await client.PostAsJsonAsync("/batches", new { strain = "Mint" });
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
 
         body.GetProperty("strain").GetString().Should().Be("Mint");
@@ -35,9 +31,28 @@ public class BatchEndpointsTests(LimsWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task POST_Batches_Retorna401_SemToken()
+    {
+        var client = factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/batches", new { strain = "Dill" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task POST_Batches_Retorna403_ComRoleLab()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync("Lab");
+        var response = await client.PostAsJsonAsync("/batches", new { strain = "Dill" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public async Task GET_Summary_Retorna404_QuandoLoteNaoExiste()
     {
-        var response = await _client.GetAsync($"/batches/{Guid.NewGuid()}/summary");
+        var client = await factory.CreateAuthenticatedClientAsync();
+        var response = await client.GetAsync($"/batches/{Guid.NewGuid()}/summary");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -45,12 +60,11 @@ public class BatchEndpointsTests(LimsWebApplicationFactory factory)
     [Fact]
     public async Task GET_Summary_Retorna200_QuandoLoteExiste()
     {
-        var payload = new { strain = "Purple Basil" };
-        var created = await _client.PostAsJsonAsync("/batches", payload);
-        var body = await created.Content.ReadFromJsonAsync<JsonElement>();
-        var id = body.GetProperty("id").GetGuid();
+        var adminClient = await factory.CreateAuthenticatedClientAsync("Admin");
+        var created = await adminClient.PostAsJsonAsync("/batches", new { strain = "Purple Basil" });
+        var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
 
-        var response = await _client.GetAsync($"/batches/{id}/summary");
+        var response = await adminClient.GetAsync($"/batches/{id}/summary");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }

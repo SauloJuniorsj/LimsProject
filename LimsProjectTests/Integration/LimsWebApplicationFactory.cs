@@ -1,3 +1,6 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
 using LimsProject.Application.Workers;
 using LimsProject.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
@@ -27,5 +30,25 @@ public class LimsWebApplicationFactory : WebApplicationFactory<Program>
                 d.ImplementationType == typeof(RollupWorker));
             if (worker is not null) services.Remove(worker);
         });
+    }
+
+    public async Task<string> GetTokenAsync(HttpClient client, string role = "Admin")
+    {
+        var email = $"{role.ToLower()}_{Guid.NewGuid():N}@test.com";
+        const string password = "Test@1234";
+
+        await client.PostAsJsonAsync("/auth/register", new { email, password, role });
+
+        var response = await client.PostAsJsonAsync("/auth/login", new { email, password });
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return body.GetProperty("token").GetString()!;
+    }
+
+    public async Task<HttpClient> CreateAuthenticatedClientAsync(string role = "Admin")
+    {
+        var client = CreateClient();
+        var token = await GetTokenAsync(client, role);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 }

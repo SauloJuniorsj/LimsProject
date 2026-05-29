@@ -1,10 +1,12 @@
 using LimsProject.Application.Interfaces;
 using LimsProject.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace LimsProject.Infrastructure.Persistence;
 
-public class AppDbContext : DbContext, ILimsDbContext
+public class AppDbContext : IdentityDbContext<IdentityUser>, ILimsDbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -15,6 +17,8 @@ public class AppDbContext : DbContext, ILimsDbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder); // required for Identity tables
+
         // Preserve existing table/column names for backwards compatibility
         modelBuilder.Entity<Batch>().ToTable("Batches");
         modelBuilder.Entity<BatchDailySummary>().ToTable("BatchesDailySumaries");
@@ -26,37 +30,25 @@ public class AppDbContext : DbContext, ILimsDbContext
             .HasColumnName("AvarageTemperature");
 
         // Batch indexes
-        modelBuilder.Entity<Batch>()
-            .HasIndex(b => b.Strain);
-        modelBuilder.Entity<Batch>()
-            .HasIndex(b => b.Status);
+        modelBuilder.Entity<Batch>().HasIndex(b => b.Strain);
+        modelBuilder.Entity<Batch>().HasIndex(b => b.Status);
 
         // SensorData: FK + composite index for time-range queries per batch
         modelBuilder.Entity<SensorData>()
-            .HasOne<Batch>()
-            .WithMany()
-            .HasForeignKey(s => s.BatchId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .HasOne<Batch>().WithMany().HasForeignKey(s => s.BatchId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SensorData>()
             .HasIndex(s => new { s.BatchId, s.ReadingTime });
 
         // LabAnalysis: FK + index
         modelBuilder.Entity<LabAnalysis>()
-            .HasOne<Batch>()
-            .WithMany()
-            .HasForeignKey(a => a.BatchId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .HasOne<Batch>().WithMany().HasForeignKey(a => a.BatchId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<LabAnalysis>()
             .HasIndex(a => a.BatchId);
 
         // BatchDailySummary: FK + unique constraint (one summary per batch per day)
         modelBuilder.Entity<BatchDailySummary>()
-            .HasOne<Batch>()
-            .WithMany()
-            .HasForeignKey(s => s.BatchId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .HasOne<Batch>().WithMany().HasForeignKey(s => s.BatchId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<BatchDailySummary>()
-            .HasIndex(s => new { s.BatchId, s.Date })
-            .IsUnique();
+            .HasIndex(s => new { s.BatchId, s.Date }).IsUnique();
     }
 }
