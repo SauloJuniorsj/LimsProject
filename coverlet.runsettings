@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <ExcludeByFile>
+            **/Migrations/**/*.cs,
+            **/*.Designer.cs,
+            **/AppDbContextModelSnapshot.cs
+          </ExcludeByFile>
+          <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
+          <Exclude>[*]LimsProject.Migrations.*,[*]Microsoft.AspNetCore.OpenApi.*,[*]System.Runtime.CompilerServices.*</Exclude>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
