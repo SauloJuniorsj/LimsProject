@@ -16,6 +16,8 @@ public class AnalysisEndpointsTests(LimsWebApplicationFactory factory)
         return body.GetProperty("id").GetGuid();
     }
 
+    // --- POST /batches/{id}/analysis ---
+
     [Fact]
     public async Task POST_Analysis_Retorna401_SemToken()
     {
@@ -94,5 +96,48 @@ public class AnalysisEndpointsTests(LimsWebApplicationFactory factory)
 
         var summary = await adminClient.GetFromJsonAsync<JsonElement>($"/batches/{id}/summary");
         summary.GetProperty("status").GetInt32().Should().Be(5); // BatchStatus.Rejected
+    }
+
+    // --- GET /batches/{id}/analyses ---
+
+    [Fact]
+    public async Task GET_Analyses_Retorna200_ComListaVazia_QuandoSemAnalises()
+    {
+        var adminClient = await factory.CreateAuthenticatedClientAsync("Admin");
+        var labClient = await factory.CreateAuthenticatedClientAsync("Lab");
+        var id = await CriarLoteAsync(adminClient, "EmptyAnalysesBatch");
+
+        var response = await labClient.GetAsync($"/batches/{id}/analyses");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GET_Analyses_Retorna200_ComAnalisesCriadas()
+    {
+        var adminClient = await factory.CreateAuthenticatedClientAsync("Admin");
+        var labClient = await factory.CreateAuthenticatedClientAsync("Lab");
+        var id = await CriarLoteAsync(adminClient, "WithAnalysesBatch");
+
+        await labClient.PostAsJsonAsync($"/batches/{id}/analysis",
+            new { thc = 0.1, cbd = 3.0, terpenes = "pine", isPassed = true });
+
+        var response = await labClient.GetAsync($"/batches/{id}/analyses");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body.GetArrayLength().Should().Be(1);
+        body[0].GetProperty("batchId").GetGuid().Should().Be(id);
+    }
+
+    [Fact]
+    public async Task GET_Analyses_Retorna404_QuandoLoteNaoExiste()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync("Lab");
+        var response = await client.GetAsync($"/batches/{Guid.NewGuid()}/analyses");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }

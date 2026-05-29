@@ -5,6 +5,7 @@ using LimsProject.Domain.Entities;
 using LimsProject.Domain.Enums;
 using LimsProject.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace LimsProjectTests.Application;
 
@@ -21,7 +22,7 @@ public class RollupServiceTests
     public async Task SemLotes_NenhumSummaryEhCriado()
     {
         await using var db = CreateDb(nameof(SemLotes_NenhumSummaryEhCriado));
-        var service = new RollupService(db);
+        var service = new RollupService(db, NullLogger<RollupService>.Instance);
 
         await service.ConsolidateDataAsync(CancellationToken.None);
 
@@ -47,7 +48,7 @@ public class RollupServiceTests
         });
         await db.SaveChangesAsync();
 
-        var service = new RollupService(db);
+        var service = new RollupService(db, NullLogger<RollupService>.Instance);
         await service.ConsolidateDataAsync(CancellationToken.None);
 
         db.BatchesDailySummaries.Should().BeEmpty();
@@ -68,7 +69,7 @@ public class RollupServiceTests
         );
         await db.SaveChangesAsync();
 
-        var service = new RollupService(db);
+        var service = new RollupService(db, NullLogger<RollupService>.Instance);
         await service.ConsolidateDataAsync(CancellationToken.None);
 
         var summary = await db.BatchesDailySummaries.SingleAsync();
@@ -103,7 +104,7 @@ public class RollupServiceTests
         });
         await db.SaveChangesAsync();
 
-        var service = new RollupService(db);
+        var service = new RollupService(db, NullLogger<RollupService>.Instance);
         await service.ConsolidateDataAsync(CancellationToken.None);
 
         var summaries = await db.BatchesDailySummaries.ToListAsync();
@@ -128,7 +129,7 @@ public class RollupServiceTests
         );
         await db.SaveChangesAsync();
 
-        var service = new RollupService(db);
+        var service = new RollupService(db, NullLogger<RollupService>.Instance);
         await service.ConsolidateDataAsync(CancellationToken.None);
 
         var summaries = await db.BatchesDailySummaries.ToListAsync();

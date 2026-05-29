@@ -2,6 +2,7 @@ using FluentValidation;
 using LimsProject.Application.Interfaces;
 using LimsProject.Domain.Entities;
 using LimsProject.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace LimsProject.API.Endpoints;
 
@@ -29,7 +30,21 @@ public static class AnalysisEndpoints
             batch.Status = analysis.IsPassed ? BatchStatus.Released : BatchStatus.Rejected;
 
             await db.SaveChangesAsync();
-            return Results.Created($"/analysis/{analysis.Id}", analysis);
+            return Results.Created($"/batches/{id}/analyses/{analysis.Id}", analysis);
+        }).RequireAuthorization("LabOrAdmin");
+
+        app.MapGet("/batches/{id}/analyses", async (Guid id, ILimsDbContext db) =>
+        {
+            var exists = await db.Batches.AsNoTracking().AnyAsync(b => b.Id == id);
+            if (!exists) return Results.NotFound("Lote não encontrado.");
+
+            var analyses = await db.LabAnalyses
+                .AsNoTracking()
+                .Where(a => a.BatchId == id)
+                .OrderByDescending(a => a.AnalysisDate)
+                .ToListAsync();
+
+            return Results.Ok(analyses);
         }).RequireAuthorization("LabOrAdmin");
     }
 }

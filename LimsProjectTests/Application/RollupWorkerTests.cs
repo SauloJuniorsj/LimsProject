@@ -2,6 +2,7 @@ using FluentAssertions;
 using LimsProject.Application.Services;
 using Xunit;
 using LimsProject.Application.Workers;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -30,8 +31,9 @@ public class RollupWorkerTests
         scopeFactory.CreateScope().Returns(scope);
 
         var logger = Substitute.For<ILogger<RollupWorker>>();
+        var config = new ConfigurationBuilder().Build();
 
-        return (new RollupWorker(scopeFactory, logger), rollupService);
+        return (new RollupWorker(scopeFactory, logger, config), rollupService);
     }
 
     [Fact]
@@ -66,7 +68,8 @@ public class RollupWorkerTests
         scopeFactory.CreateScope().Returns(scope);
 
         var logger = Substitute.For<ILogger<RollupWorker>>();
-        var worker = new RollupWorker(scopeFactory, logger);
+        var config = new ConfigurationBuilder().Build();
+        var worker = new RollupWorker(scopeFactory, logger, config);
 
         await worker.StartAsync(CancellationToken.None);
         await Task.Delay(150);

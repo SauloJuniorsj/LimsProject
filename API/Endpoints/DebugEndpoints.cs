@@ -9,6 +9,9 @@ public static class DebugEndpoints
 {
     public static void MapDebugEndpoints(this WebApplication app)
     {
+        if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Testing"))
+            return;
+
         app.MapPost("/debug/populate-elegant", async (ILimsDbContext db) =>
         {
             var batchFaker = new Faker<Batch>()

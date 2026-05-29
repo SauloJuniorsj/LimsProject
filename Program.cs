@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,15 +66,67 @@ builder.Services.AddHostedService<RollupWorker>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
-// API
+// Problem Details — respostas de erro padronizadas (RFC 7807)
+builder.Services.AddProblemDetails();
+
+// Healthcheck
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>();
+
+// API / Swagger com botão de autenticação JWT
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "LIMS API",
+        Version = "v1",
+        Description = "Laboratory Information Management System para empresas de cannabis."
+    });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Bearer. Faça login em /auth/login e cole o token aqui: Bearer {token}",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 var app = builder.Build();
 
-// Seed roles on startup
-await using (var scope = app.Services.CreateAsyncScope())
+// Auto-migration e seed de roles (apenas fora do ambiente de testes)
+if (!app.Environment.IsEnvironment("Testing"))
 {
+    await using var scope = app.Services.CreateAsyncScope();
+
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    foreach (var role in new[] { "Lab", "Admin" })
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+            await roleManager.CreateAsync(new IdentityRole(role));
+    }
+}
+else
+{
+    // Em Testing, só semeia as roles (InMemory não precisa de migrate)
+    await using var scope = app.Services.CreateAsyncScope();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     foreach (var role in new[] { "Lab", "Admin" })
     {
@@ -82,12 +135,16 @@ await using (var scope = app.Services.CreateAsyncScope())
     }
 }
 
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "LIMS API v1"));
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHealthChecks("/health").AllowAnonymous();
 app.MapAuthEndpoints();
 app.MapBatchEndpoints();
 app.MapAnalysisEndpoints();

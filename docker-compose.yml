@@ -1,14 +1,42 @@
 services:
   db:
-    image: postgres:latest
+    image: postgres:16
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: lims_user
+      POSTGRES_PASSWORD: lims_password
       POSTGRES_DB: lims_db
     ports:
       - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lims_user -d lims_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: "Host=db;Database=lims_db;Username=lims_user;Password=lims_password"
+      Jwt__Key: "lims-super-secret-jwt-key-that-is-at-least-32-chars!!"
+      Jwt__Issuer: LimsProject
+      Jwt__Audience: LimsProject
+    depends_on:
+      db:
+        condition: service_healthy
+
   broker:
-      image: rabbitmq:3-management
-      ports:
-        - "5672:5672"
-        - "15672:15672" # Painel de controle do Rabbit
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+volumes:
+  pgdata:
