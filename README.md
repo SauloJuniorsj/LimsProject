@@ -5,7 +5,7 @@
 [![CI](https://github.com/saulocintra/LimsProject/actions/workflows/ci.yml/badge.svg)](https://github.com/saulocintra/LimsProject/actions)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![Postgres](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
-![Tests](https://img.shields.io/badge/tests-90%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-98%20passing-brightgreen)
 
 ---
 
@@ -18,6 +18,7 @@ Empresas de cannabis precisam provar — para reguladores e clientes — onde ca
 - **Compliance de cânhamo**: lote com THC > 0.3% não pode ser aprovado (regra de validação na camada de aplicação).
 - **Rollup em background**: consolida milhões de leituras de sensores em sumários diários (min/max/avg/count), processando apenas lotes ativos.
 - **Telemetria de cultivo**: cada leitura de temperatura atualiza `Batch.CurrentTemperature` e fica disponível paginada.
+- **Certificate of Analysis (CoA)**: endpoint único que agrega lote + análises + condições ambientais agregadas + ciclo de vida + compliance — o documento padrão da indústria.
 
 ---
 
@@ -71,6 +72,7 @@ Nenhuma camada interna conhece as externas. `ILimsDbContext` abstrai persistênc
 | `GET /batches/{id}/sensor-data` | autenticado |
 | `GET /batches/{id}/daily-summaries` | autenticado |
 | `GET /batches/{id}/status-history` | autenticado |
+| `GET /batches/{id}/certificate-of-analysis` | autenticado |
 | `POST /debug/populate-elegant` | `Admin` (apenas em Development/Testing) |
 
 ---

@@ -148,6 +148,55 @@ public static class BatchEndpoints
 
             return Results.Ok(history);
         }).RequireAuthorization();
+
+        app.MapGet("/batches/{id}/certificate-of-analysis", async (Guid id, ILimsDbContext db) =>
+        {
+            var batch = await db.Batches.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
+            if (batch is null) return Results.NotFound("Lote não encontrado.");
+
+            var analyses = await db.LabAnalyses.AsNoTracking()
+                .Where(a => a.BatchId == id)
+                .OrderByDescending(a => a.AnalysisDate)
+                .ToListAsync();
+
+            var summaries = await db.BatchesDailySummaries.AsNoTracking()
+                .Where(s => s.BatchId == id)
+                .ToListAsync();
+
+            var lifecycle = await db.BatchStatusHistories.AsNoTracking()
+                .Where(h => h.BatchId == id)
+                .OrderBy(h => h.ChangedAt)
+                .ToListAsync();
+
+            var environmental = summaries.Count == 0
+                ? new EnvironmentalConditions(0, null, null, null, 0)
+                : new EnvironmentalConditions(
+                    DaysMonitored: summaries.Count,
+                    OverallAvgTemperature: summaries.Average(s => s.AvgTemperature),
+                    OverallMinTemperature: summaries.Min(s => s.MinTemperature),
+                    OverallMaxTemperature: summaries.Max(s => s.MaxTemperature),
+                    TotalReadings: summaries.Sum(s => s.ReadingCount));
+
+            var passing = analyses.Where(a => a.IsPassed).ToList();
+            var compliance = new ComplianceSummary(
+                HasPassingAnalysis: passing.Count > 0,
+                HempCompliant: passing.Count == 0 || passing.All(a => a.THC <= 0.3m),
+                AnalysisCount: analyses.Count,
+                LastAnalysisDate: analyses.FirstOrDefault()?.AnalysisDate);
+
+            var coa = new CertificateOfAnalysis(
+                BatchId: batch.Id,
+                Strain: batch.Strain,
+                Status: batch.Status,
+                BatchCreatedAt: batch.CreatedAt,
+                Analyses: analyses,
+                Environmental: environmental,
+                Lifecycle: lifecycle,
+                Compliance: compliance,
+                IssuedAt: DateTime.UtcNow);
+
+            return Results.Ok(coa);
+        }).RequireAuthorization();
     }
 }
 
