@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FluentValidation;
 using LimsProject.Application.Interfaces;
+using LimsProject.Application.Observability;
 using LimsProject.Application.Services;
 using LimsProject.Domain.Entities;
 using LimsProject.Domain.Enums;
@@ -17,7 +18,8 @@ public static class AnalysisEndpoints
             LabAnalysis analysis,
             ILimsDbContext db,
             IValidator<LabAnalysis> validator,
-            ClaimsPrincipal user) =>
+            ClaimsPrincipal user,
+            LimsMetrics metrics) =>
         {
             analysis.BatchId = id;
             analysis.AnalysisDate = DateTime.UtcNow;
@@ -40,6 +42,7 @@ public static class AnalysisEndpoints
             }
 
             await db.SaveChangesAsync();
+            metrics.AnalysisCompleted(analysis.IsPassed);
             return Results.Created($"/batches/{id}/analyses/{analysis.Id}", analysis);
         }).RequireAuthorization("LabOrAdmin");
 

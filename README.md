@@ -47,7 +47,7 @@ Nenhuma camada interna conhece as externas. `ILimsDbContext` abstrai persistênc
 | Validação | FluentValidation (validators no Application layer) |
 | Background | `BackgroundService` + `IServiceScopeFactory` para scopes seguros |
 | Rate limiting | `Microsoft.AspNetCore.RateLimiting` (fixed window no `/auth/login`) |
-| Observabilidade | Health checks (`/health`) com check do DbContext |
+| Observabilidade | Health checks (`/health`) + **OpenTelemetry** (traces ASP.NET Core + métricas custom de domínio + runtime metrics, Console exporter) |
 | Documentação | Swashbuckle (Swagger UI com botão de auth Bearer) |
 | Testes | xUnit + FluentAssertions + NSubstitute + EF InMemory + WebApplicationFactory |
 | Infra | Docker multi-stage + docker-compose (Postgres + API + RabbitMQ) |
@@ -120,6 +120,20 @@ dotnet test
 - **Integration tests** (TestServer + EF InMemory): auth, batches CRUD/paginação/filtros/transições, análises, sensor data, daily summaries, status history, segurança (401/403)
 
 Coverage com exclusões (migrations, generated files) via `coverlet.runsettings`.
+
+---
+
+## 📊 Métricas de domínio (OpenTelemetry)
+
+Métricas customizadas expostas via `Meter` "LimsProject":
+
+| Métrica | Tipo | Tags | Descrição |
+|---|---|---|---|
+| `lims.batches.created` | Counter | — | Lotes criados |
+| `lims.analyses.completed` | Counter | `passed=true\|false` | Análises laboratoriais finalizadas |
+| `lims.status.transitions` | Counter | `from`, `to` | Mudanças de status de lote |
+
+Mais traces HTTP do ASP.NET Core e métricas de runtime (.NET GC, heap, thread pool). Console exporter por padrão; em produção, configurar OTLP via env var `OTEL_EXPORTER_OTLP_ENDPOINT`. Desativado no ambiente `Testing` para não poluir output.
 
 ---
 

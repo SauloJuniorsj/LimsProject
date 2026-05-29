@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentValidation;
 using LimsProject.Application.Interfaces;
 using LimsProject.Application.Models;
+using LimsProject.Application.Observability;
 using LimsProject.Application.Services;
 using LimsProject.Domain.Entities;
 using LimsProject.Domain.Enums;
@@ -27,7 +28,8 @@ public static class BatchEndpoints
             Batch batch,
             ILimsDbContext db,
             IValidator<Batch> validator,
-            ClaimsPrincipal user) =>
+            ClaimsPrincipal user,
+            LimsMetrics metrics) =>
         {
             var result = await validator.ValidateAsync(batch);
             if (!result.IsValid)
@@ -36,6 +38,7 @@ public static class BatchEndpoints
             db.Batches.Add(batch);
             StatusHistoryRecorder.Record(db, batch.Id, null, batch.Status, user, "Lote criado");
             await db.SaveChangesAsync();
+            metrics.BatchCreated();
             return Results.Created($"/batches/{batch.Id}", batch);
         }).RequireAuthorization("AdminOnly");
 
@@ -77,7 +80,8 @@ public static class BatchEndpoints
             Guid id,
             StatusUpdateRequest req,
             ILimsDbContext db,
-            ClaimsPrincipal user) =>
+            ClaimsPrincipal user,
+            LimsMetrics metrics) =>
         {
             var batch = await db.Batches.FindAsync(id);
             if (batch is null) return Results.NotFound("Lote não encontrado.");
@@ -93,6 +97,7 @@ public static class BatchEndpoints
             batch.Status = req.Status;
             StatusHistoryRecorder.Record(db, batch.Id, from, req.Status, user, req.Reason);
             await db.SaveChangesAsync();
+            metrics.StatusTransition(from.ToString(), req.Status.ToString());
             return Results.Ok(batch);
         }).RequireAuthorization("AdminOnly");
 

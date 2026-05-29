@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using LimsProject.API.Endpoints;
 using LimsProject.Application.Interfaces;
+using LimsProject.Application.Observability;
 using LimsProject.Application.Services;
 using LimsProject.Application.Workers;
 using LimsProject.Infrastructure.Auth;
@@ -14,6 +15,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -67,6 +71,23 @@ builder.Services.AddScoped<IRollupService, RollupService>();
 builder.Services.AddHostedService<RollupWorker>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+builder.Services.AddSingleton<LimsMetrics>();
+
+// OpenTelemetry — traces + metrics (desativado em Testing pra não poluir output)
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(r => r.AddService("LimsProject"))
+        .WithTracing(t => t
+            .AddAspNetCoreInstrumentation()
+            .AddSource("LimsProject")
+            .AddConsoleExporter())
+        .WithMetrics(m => m
+            .AddMeter(LimsMetrics.MeterName)
+            .AddAspNetCoreInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddConsoleExporter());
+}
 
 // Rate limiting — proteção contra brute-force no login
 builder.Services.AddRateLimiter(options =>
