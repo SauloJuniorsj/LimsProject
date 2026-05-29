@@ -10,7 +10,8 @@
       "Bash(Remove-Item \"c:\\\\Users\\\\programador\\\\source\\\\repos\\\\LimsProject\\\\Models\\\\SensorData.cs\" -Force)",
       "Bash(Remove-Item \"c:\\\\Users\\\\programador\\\\source\\\\repos\\\\LimsProject\\\\Services\\\\RollupService.cs\" -Force)",
       "PowerShell(Get-ChildItem \"c:\\\\Users\\\\programador\\\\source\\\\repos\\\\LimsProject\" -Recurse | Where-Object { !$_.PSIsContainer } | Select-Object FullName | Sort-Object FullName)",
-      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\programador\\\\source\\\\repos\\\\LimsProject\" -Recurse | Where-Object { !$_.PSIsContainer } | ForEach-Object { $_.FullName.Replace\\(\"c:\\\\Users\\\\programador\\\\source\\\\repos\\\\LimsProject\\\\\", \"\"\\) } | Sort-Object)"
+      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\programador\\\\source\\\\repos\\\\LimsProject\" -Recurse | Where-Object { !$_.PSIsContainer } | ForEach-Object { $_.FullName.Replace\\(\"c:\\\\Users\\\\programador\\\\source\\\\repos\\\\LimsProject\\\\\", \"\"\\) } | Sort-Object)",
+      "PowerShell(Test-Path \"$env:USERPROFILE\\\\.nuget\\\\packages\\\\fluentassertions\\\\7.2.0\"; Test-Path \"$env:USERPROFILE\\\\.nuget\\\\packages\\\\xunit\\\\2.9.3\"; Test-Path \"$env:USERPROFILE\\\\.nuget\\\\packages\\\\nsubstitute\\\\5.3.0\"; Test-Path \"$env:USERPROFILE\\\\.nuget\\\\packages\\\\microsoft.aspnetcore.mvc.testing\\\\10.0.4\")"
     ]
   }
 }

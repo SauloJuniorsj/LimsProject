@@ -5,7 +5,7 @@ VisualStudioVersion = 18.5.11605.296
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LimsProject", "LimsProject.csproj", "{662AE740-C7F1-8C7F-F522-CCD7136C42A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LimsProjectTests", "..\LimsProjectTests\LimsProjectTests.csproj", "{9137A75E-7FA4-4723-8FFD-BF94174D4D6A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LimsProjectTests", "LimsProjectTests\LimsProjectTests.csproj", "{9137A75E-7FA4-4723-8FFD-BF94174D4D6A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
