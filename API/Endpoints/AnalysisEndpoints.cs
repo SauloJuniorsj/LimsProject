@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FluentValidation;
+using LimsProject.Application.Events;
 using LimsProject.Application.Interfaces;
 using LimsProject.Application.Observability;
 using LimsProject.Application.Services;
@@ -19,7 +20,8 @@ public static class AnalysisEndpoints
             ILimsDbContext db,
             IValidator<LabAnalysis> validator,
             ClaimsPrincipal user,
-            LimsMetrics metrics) =>
+            LimsMetrics metrics,
+            IEventPublisher events) =>
         {
             analysis.BatchId = id;
             analysis.AnalysisDate = DateTime.UtcNow;
@@ -34,8 +36,10 @@ public static class AnalysisEndpoints
             db.LabAnalyses.Add(analysis);
 
             var newStatus = analysis.IsPassed ? BatchStatus.Released : BatchStatus.Rejected;
+            BatchStatus? previousStatus = null;
             if (newStatus != batch.Status)
             {
+                previousStatus = batch.Status;
                 StatusHistoryRecorder.Record(db, batch.Id, batch.Status, newStatus, user,
                     analysis.IsPassed ? "Aprovado em análise laboratorial" : "Reprovado em análise laboratorial");
                 batch.Status = newStatus;
@@ -43,6 +47,18 @@ public static class AnalysisEndpoints
 
             await db.SaveChangesAsync();
             metrics.AnalysisCompleted(analysis.IsPassed);
+
+            await events.PublishAsync(new AnalysisCompletedEvent(
+                batch.Id, analysis.Id, analysis.THC, analysis.CBD, analysis.IsPassed, DateTime.UtcNow));
+            if (previousStatus.HasValue)
+            {
+                await events.PublishAsync(new BatchStatusChangedEvent(
+                    batch.Id, previousStatus, newStatus,
+                    user.FindFirstValue(ClaimTypes.Email) ?? "anonymous",
+                    "Mudança automática via análise laboratorial",
+                    DateTime.UtcNow));
+            }
+
             return Results.Created($"/batches/{id}/analyses/{analysis.Id}", analysis);
         }).RequireAuthorization("LabOrAdmin");
 

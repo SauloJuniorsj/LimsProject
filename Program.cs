@@ -8,6 +8,7 @@ using LimsProject.Application.Observability;
 using LimsProject.Application.Services;
 using LimsProject.Application.Workers;
 using LimsProject.Infrastructure.Auth;
+using LimsProject.Infrastructure.Messaging;
 using LimsProject.Infrastructure.Persistence;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -72,6 +73,14 @@ builder.Services.AddHostedService<RollupWorker>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 builder.Services.AddSingleton<LimsMetrics>();
+
+// Event publishing — RabbitMQ se habilitado, NullEventPublisher caso contrário
+var rabbitEnabled = builder.Configuration.GetValue("RabbitMq:Enabled", false)
+    && !builder.Environment.IsEnvironment("Testing");
+if (rabbitEnabled)
+    builder.Services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
+else
+    builder.Services.AddSingleton<IEventPublisher, NullEventPublisher>();
 
 // OpenTelemetry — traces + metrics (desativado em Testing pra não poluir output)
 if (!builder.Environment.IsEnvironment("Testing"))

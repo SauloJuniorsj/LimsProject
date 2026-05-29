@@ -48,6 +48,7 @@ Nenhuma camada interna conhece as externas. `ILimsDbContext` abstrai persistênc
 | Background | `BackgroundService` + `IServiceScopeFactory` para scopes seguros |
 | Rate limiting | `Microsoft.AspNetCore.RateLimiting` (fixed window no `/auth/login`) |
 | Observabilidade | Health checks (`/health`) + **OpenTelemetry** (traces ASP.NET Core + métricas custom de domínio + runtime metrics, Console exporter) |
+| Messaging | **RabbitMQ** topic exchange (`lims.events`) com 3 eventos de domínio (publicação fire-and-forget com fallback) |
 | Documentação | Swashbuckle (Swagger UI com botão de auth Bearer) |
 | Testes | xUnit + FluentAssertions + NSubstitute + EF InMemory + WebApplicationFactory |
 | Infra | Docker multi-stage + docker-compose (Postgres + API + RabbitMQ) |
@@ -120,6 +121,22 @@ dotnet test
 - **Integration tests** (TestServer + EF InMemory): auth, batches CRUD/paginação/filtros/transições, análises, sensor data, daily summaries, status history, segurança (401/403)
 
 Coverage com exclusões (migrations, generated files) via `coverlet.runsettings`.
+
+---
+
+## 📨 Eventos de domínio (RabbitMQ)
+
+Eventos publicados no exchange topic `lims.events` (durável), com routing keys `lims.<eventname>`:
+
+| Routing key | Evento | Disparado por |
+|---|---|---|
+| `lims.batchcreatedevent` | `BatchCreatedEvent(BatchId, Strain, OccurredAt)` | `POST /batches` |
+| `lims.batchstatuschangedevent` | `BatchStatusChangedEvent(BatchId, From, To, ChangedBy, Reason, OccurredAt)` | `PATCH /batches/{id}/status` e mudança automática via análise |
+| `lims.analysiscompletedevent` | `AnalysisCompletedEvent(BatchId, AnalysisId, Thc, Cbd, Passed, OccurredAt)` | `POST /batches/{id}/analysis` |
+
+`IEventPublisher` é abstração no Application layer; `RabbitMqEventPublisher` (lazy connect, JSON, persistent delivery) e `NullEventPublisher` (no-op pra Testing/broker desligado) ficam em Infrastructure. Falhas de broker são logadas mas **não derrubam o request** — fire-and-forget com graceful degradation. (Para produção real, isso evoluiria pro outbox pattern.)
+
+Habilitado via `RabbitMq__Enabled=true`. O `docker-compose up` já sobe o broker e habilita por default; rodando local sem broker, o `NullEventPublisher` é usado automaticamente.
 
 ---
 

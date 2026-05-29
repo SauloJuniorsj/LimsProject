@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FluentValidation;
+using LimsProject.Application.Events;
 using LimsProject.Application.Interfaces;
 using LimsProject.Application.Models;
 using LimsProject.Application.Observability;
@@ -29,7 +30,8 @@ public static class BatchEndpoints
             ILimsDbContext db,
             IValidator<Batch> validator,
             ClaimsPrincipal user,
-            LimsMetrics metrics) =>
+            LimsMetrics metrics,
+            IEventPublisher events) =>
         {
             var result = await validator.ValidateAsync(batch);
             if (!result.IsValid)
@@ -39,6 +41,8 @@ public static class BatchEndpoints
             StatusHistoryRecorder.Record(db, batch.Id, null, batch.Status, user, "Lote criado");
             await db.SaveChangesAsync();
             metrics.BatchCreated();
+
+            await events.PublishAsync(new BatchCreatedEvent(batch.Id, batch.Strain, DateTime.UtcNow));
             return Results.Created($"/batches/{batch.Id}", batch);
         }).RequireAuthorization("AdminOnly");
 
@@ -81,7 +85,8 @@ public static class BatchEndpoints
             StatusUpdateRequest req,
             ILimsDbContext db,
             ClaimsPrincipal user,
-            LimsMetrics metrics) =>
+            LimsMetrics metrics,
+            IEventPublisher events) =>
         {
             var batch = await db.Batches.FindAsync(id);
             if (batch is null) return Results.NotFound("Lote não encontrado.");
@@ -98,6 +103,11 @@ public static class BatchEndpoints
             StatusHistoryRecorder.Record(db, batch.Id, from, req.Status, user, req.Reason);
             await db.SaveChangesAsync();
             metrics.StatusTransition(from.ToString(), req.Status.ToString());
+
+            await events.PublishAsync(new BatchStatusChangedEvent(
+                batch.Id, from, req.Status,
+                user.FindFirstValue(System.Security.Claims.ClaimTypes.Email) ?? "anonymous",
+                req.Reason, DateTime.UtcNow));
             return Results.Ok(batch);
         }).RequireAuthorization("AdminOnly");
 

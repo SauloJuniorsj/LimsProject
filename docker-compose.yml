@@ -27,9 +27,16 @@ services:
       Jwt__Key: "lims-super-secret-jwt-key-that-is-at-least-32-chars!!"
       Jwt__Issuer: LimsProject
       Jwt__Audience: LimsProject
+      RabbitMq__Enabled: "true"
+      RabbitMq__Host: broker
+      RabbitMq__Port: "5672"
+      RabbitMq__User: guest
+      RabbitMq__Password: guest
     depends_on:
       db:
         condition: service_healthy
+      broker:
+        condition: service_started
 
   broker:
     image: rabbitmq:3-management
