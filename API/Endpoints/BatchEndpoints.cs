@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using FluentValidation;
 using LimsProject.Application.Interfaces;
 using LimsProject.Application.Models;
+using LimsProject.Application.Services;
 using LimsProject.Domain.Entities;
 using LimsProject.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -21,13 +23,18 @@ public static class BatchEndpoints
 
     public static void MapBatchEndpoints(this WebApplication app)
     {
-        app.MapPost("/batches", async (Batch batch, ILimsDbContext db, IValidator<Batch> validator) =>
+        app.MapPost("/batches", async (
+            Batch batch,
+            ILimsDbContext db,
+            IValidator<Batch> validator,
+            ClaimsPrincipal user) =>
         {
             var result = await validator.ValidateAsync(batch);
             if (!result.IsValid)
                 return Results.ValidationProblem(result.ToDictionary());
 
             db.Batches.Add(batch);
+            StatusHistoryRecorder.Record(db, batch.Id, null, batch.Status, user, "Lote criado");
             await db.SaveChangesAsync();
             return Results.Created($"/batches/{batch.Id}", batch);
         }).RequireAuthorization("AdminOnly");
@@ -66,7 +73,11 @@ public static class BatchEndpoints
             return batch is null ? Results.NotFound("Lote não encontrado.") : Results.Ok(batch);
         }).RequireAuthorization();
 
-        app.MapPatch("/batches/{id}/status", async (Guid id, StatusUpdateRequest req, ILimsDbContext db) =>
+        app.MapPatch("/batches/{id}/status", async (
+            Guid id,
+            StatusUpdateRequest req,
+            ILimsDbContext db,
+            ClaimsPrincipal user) =>
         {
             var batch = await db.Batches.FindAsync(id);
             if (batch is null) return Results.NotFound("Lote não encontrado.");
@@ -78,7 +89,9 @@ public static class BatchEndpoints
                     $"Transição inválida: {batch.Status} → {req.Status}. Permitido: {permitted}.");
             }
 
+            var from = batch.Status;
             batch.Status = req.Status;
+            StatusHistoryRecorder.Record(db, batch.Id, from, req.Status, user, req.Reason);
             await db.SaveChangesAsync();
             return Results.Ok(batch);
         }).RequireAuthorization("AdminOnly");
@@ -121,7 +134,21 @@ public static class BatchEndpoints
 
             return Results.Ok(summaries);
         }).RequireAuthorization();
+
+        app.MapGet("/batches/{id}/status-history", async (Guid id, ILimsDbContext db) =>
+        {
+            var exists = await db.Batches.AsNoTracking().AnyAsync(b => b.Id == id);
+            if (!exists) return Results.NotFound("Lote não encontrado.");
+
+            var history = await db.BatchStatusHistories
+                .AsNoTracking()
+                .Where(h => h.BatchId == id)
+                .OrderByDescending(h => h.ChangedAt)
+                .ToListAsync();
+
+            return Results.Ok(history);
+        }).RequireAuthorization();
     }
 }
 
-public record StatusUpdateRequest(BatchStatus Status);
+public record StatusUpdateRequest(BatchStatus Status, string? Reason = null);

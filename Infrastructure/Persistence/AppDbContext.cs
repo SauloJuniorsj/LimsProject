@@ -14,6 +14,7 @@ public class AppDbContext : IdentityDbContext<IdentityUser>, ILimsDbContext
     public DbSet<BatchDailySummary> BatchesDailySummaries => Set<BatchDailySummary>();
     public DbSet<SensorData> SensorData => Set<SensorData>();
     public DbSet<LabAnalysis> LabAnalyses => Set<LabAnalysis>();
+    public DbSet<BatchStatusHistory> BatchStatusHistories => Set<BatchStatusHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -50,5 +51,12 @@ public class AppDbContext : IdentityDbContext<IdentityUser>, ILimsDbContext
             .HasOne<Batch>().WithMany().HasForeignKey(s => s.BatchId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<BatchDailySummary>()
             .HasIndex(s => new { s.BatchId, s.Date }).IsUnique();
+
+        // BatchStatusHistory: FK + index para consulta cronológica
+        modelBuilder.Entity<BatchStatusHistory>().ToTable("BatchStatusHistories");
+        modelBuilder.Entity<BatchStatusHistory>()
+            .HasOne<Batch>().WithMany().HasForeignKey(h => h.BatchId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<BatchStatusHistory>()
+            .HasIndex(h => new { h.BatchId, h.ChangedAt });
     }
 }

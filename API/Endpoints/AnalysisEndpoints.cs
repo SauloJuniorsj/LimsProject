@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using FluentValidation;
 using LimsProject.Application.Interfaces;
+using LimsProject.Application.Services;
 using LimsProject.Domain.Entities;
 using LimsProject.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +16,8 @@ public static class AnalysisEndpoints
             Guid id,
             LabAnalysis analysis,
             ILimsDbContext db,
-            IValidator<LabAnalysis> validator) =>
+            IValidator<LabAnalysis> validator,
+            ClaimsPrincipal user) =>
         {
             analysis.BatchId = id;
             analysis.AnalysisDate = DateTime.UtcNow;
@@ -27,7 +30,14 @@ public static class AnalysisEndpoints
             if (batch is null) return Results.NotFound("Lote não encontrado.");
 
             db.LabAnalyses.Add(analysis);
-            batch.Status = analysis.IsPassed ? BatchStatus.Released : BatchStatus.Rejected;
+
+            var newStatus = analysis.IsPassed ? BatchStatus.Released : BatchStatus.Rejected;
+            if (newStatus != batch.Status)
+            {
+                StatusHistoryRecorder.Record(db, batch.Id, batch.Status, newStatus, user,
+                    analysis.IsPassed ? "Aprovado em análise laboratorial" : "Reprovado em análise laboratorial");
+                batch.Status = newStatus;
+            }
 
             await db.SaveChangesAsync();
             return Results.Created($"/batches/{id}/analyses/{analysis.Id}", analysis);

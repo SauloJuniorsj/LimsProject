@@ -9,5 +9,6 @@ public interface ILimsDbContext
     DbSet<SensorData> SensorData { get; }
     DbSet<BatchDailySummary> BatchesDailySummaries { get; }
     DbSet<LabAnalysis> LabAnalyses { get; }
+    DbSet<BatchStatusHistory> BatchStatusHistories { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
