@@ -79,7 +79,16 @@ npm run build    # type-check + bundle produção
 npm run preview  # preview do build
 npm run lint     # Biome check
 npm run format   # Biome format --write
+npm test         # Vitest run
+npm run test:cov # Vitest com coverage report
 ```
+
+## Testes
+
+Vitest + Testing Library + jsdom. 14 testes cobrindo:
+- Helpers de formatação (date/number/temp/%)
+- `authStore`: state, persistência só do refresh no localStorage, listeners
+- Helper `cn`: clsx + tailwind-merge mesclando classes conflitantes
 
 ## Próximos passos
 

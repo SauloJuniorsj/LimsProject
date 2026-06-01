@@ -86,3 +86,29 @@
   }
   html, body, #root { height: 100%; min-height: 100vh; }
 }
+
+@media print {
+  /* Reset agressivo pra documento limpo no papel */
+  :root, .dark {
+    --background: white !important;
+    --foreground: black !important;
+    --card: white !important;
+    --card-foreground: black !important;
+    --muted: white !important;
+    --muted-foreground: #555 !important;
+    --border: #ccc !important;
+    color-scheme: light !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  /* Esconde elementos não pertinentes à impressão (sidebar, dialogs, devtools) */
+  aside, [data-sonner-toaster], dialog, .print\:hidden { display: none !important; }
+  /* Ocupa a página inteira sem layout em colunas */
+  main { width: 100% !important; overflow: visible !important; }
+  /* Evita quebra de página dentro de tabelas e cards */
+  table, .rounded-lg { page-break-inside: avoid; }
+  @page { margin: 1.5cm; }
+}
+
