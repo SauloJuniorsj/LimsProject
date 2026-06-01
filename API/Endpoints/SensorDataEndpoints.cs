@@ -1,5 +1,6 @@
 using FluentValidation;
 using LimsProject.API;
+using LimsProject.Application.Events;
 using LimsProject.Application.Interfaces;
 using LimsProject.Application.Models;
 using LimsProject.Domain.Entities;
@@ -15,7 +16,8 @@ public static class SensorDataEndpoints
             Guid id,
             SensorReading req,
             ILimsDbContext db,
-            IValidator<SensorReading> validator) =>
+            IValidator<SensorReading> validator,
+            IEventPublisher events) =>
         {
             var result = await validator.ValidateAsync(req);
             if (!result.IsValid)
@@ -33,9 +35,35 @@ public static class SensorDataEndpoints
 
             db.SensorData.Add(reading);
             batch.CurrentTemperature = req.Temperature;
+
+            // Out-of-range → evento de alerta (vai pro outbox na mesma transação)
+            if (SensorThresholds.IsOutOfRange(req.Temperature))
+            {
+                await events.PublishAsync(new SensorReadingOutOfRangeEvent(
+                    BatchId: id,
+                    ReadingId: reading.Id,
+                    Temperature: req.Temperature,
+                    MinThreshold: SensorThresholds.MinTemperatureCelsius,
+                    MaxThreshold: SensorThresholds.MaxTemperatureCelsius,
+                    ReadingTime: reading.ReadingTime,
+                    OccurredAt: DateTime.UtcNow));
+            }
+
             await db.SaveChangesAsync();
 
-            return Results.Created($"/batches/{id}/sensor-data/{reading.Id}", reading);
+            return Results.Created($"/batches/{id}/sensor-data/{reading.Id}", new
+            {
+                reading.Id,
+                reading.BatchId,
+                reading.Temperature,
+                reading.ReadingTime,
+                outOfRange = SensorThresholds.IsOutOfRange(req.Temperature),
+                thresholds = new
+                {
+                    min = SensorThresholds.MinTemperatureCelsius,
+                    max = SensorThresholds.MaxTemperatureCelsius,
+                },
+            });
         }).RequireAuthorization("LabOrAdmin");
 
         app.MapGet("/batches/{id}/sensor-data", async (

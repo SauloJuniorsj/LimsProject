@@ -1,10 +1,8 @@
 import type { AuthTokens } from "@/types/api";
 
-// Store de auth — access token vive APENAS em memória (sai quando fecha a aba).
-// Refresh token em localStorage por simplicidade (TODO migrar pra cookie HttpOnly).
-// Listeners notificam React sobre mudanças (login/logout) sem precisar de Context global.
-
-const REFRESH_KEY = "lims.refreshToken";
+// Auth store — access token vive APENAS em memória (sai quando fecha a aba ou recarrega).
+// Refresh token é HttpOnly cookie gerenciado pelo backend — JavaScript NÃO acessa.
+// Boot: AuthBootstrap chama /auth/refresh; o navegador anexa o cookie automaticamente.
 
 interface AuthState {
   accessToken: string | null;
@@ -39,18 +37,12 @@ class AuthStore {
       accessTokenExpiresAt: new Date(tokens.accessTokenExpiresAt),
       email: email ?? this.state.email ?? this.parseEmailFromJwt(tokens.accessToken),
     };
-    localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
     this.notify();
   }
 
   clear() {
     this.state = { accessToken: null, accessTokenExpiresAt: null, email: null };
-    localStorage.removeItem(REFRESH_KEY);
     this.notify();
-  }
-
-  getRefreshToken(): string | null {
-    return localStorage.getItem(REFRESH_KEY);
   }
 
   isAuthenticated(): boolean {

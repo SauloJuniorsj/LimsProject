@@ -117,8 +117,12 @@ public class AppDbContext : IdentityDbContext<IdentityUser>, ILimsDbContext
             switch (entry.State)
             {
                 case EntityState.Added:
-                    entry.Entity.CreatedAt = now;
-                    entry.Entity.CreatedBy = user;
+                    // CreatedAt vem do construtor da entidade (= DateTime.UtcNow no Batch).
+                    // Não sobrescrevemos pra permitir seed com backdating.
+                    // CreatedBy: só preenche se ninguém setou (??=).
+                    if (entry.Entity.CreatedAt == default)
+                        entry.Entity.CreatedAt = now;
+                    entry.Entity.CreatedBy ??= user;
                     break;
                 case EntityState.Modified:
                     entry.Entity.UpdatedAt = now;

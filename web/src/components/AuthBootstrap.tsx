@@ -4,35 +4,26 @@ import { authStore } from "@/lib/auth";
 import type { AuthTokens } from "@/types/api";
 
 /**
- * Reidrata a sessão na primeira carga do app: se houver refresh token no localStorage,
- * tenta /auth/refresh ANTES de renderizar as rotas. Sem isso, dar F5 derrubaria o usuário
- * pra /login mesmo com refresh token válido (o access token vive em memória).
+ * Reidrata a sessão na primeira carga: tenta /auth/refresh — o navegador anexa
+ * o cookie HttpOnly automaticamente se houver sessão ativa. 200 = logado, 401 = anônimo.
+ * Pequeno splash enquanto faz o round-trip.
  */
 export function AuthBootstrap({ children }: { children: React.ReactNode }) {
-  const [bootstrapping, setBootstrapping] = useState(() => !!authStore.getRefreshToken());
+  const [bootstrapping, setBootstrapping] = useState(true);
 
   useEffect(() => {
-    const refreshToken = authStore.getRefreshToken();
-    if (!refreshToken) {
-      setBootstrapping(false);
-      return;
-    }
-
     (async () => {
       try {
         const resp = await fetch("/auth/refresh", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
+          credentials: "include",
         });
         if (resp.ok) {
           const tokens = (await resp.json()) as AuthTokens;
           authStore.setTokens(tokens);
-        } else {
-          authStore.clear();
         }
       } catch {
-        authStore.clear();
+        // sem sessão / offline — segue como anônimo, AuthGuard redireciona pra /login
       } finally {
         setBootstrapping(false);
       }

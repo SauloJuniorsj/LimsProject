@@ -25,3 +25,13 @@ public record AnalysisCompletedEvent(
     bool Passed,
     DateTime OccurredAt
 );
+
+public record SensorReadingOutOfRangeEvent(
+    Guid BatchId,
+    Guid ReadingId,
+    decimal Temperature,
+    decimal MinThreshold,
+    decimal MaxThreshold,
+    DateTime ReadingTime,
+    DateTime OccurredAt
+);

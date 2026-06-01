@@ -19,22 +19,20 @@ export class ApiError extends Error {
   }
 }
 
-// Refresh em curso: várias requests 401 simultâneas compartilham a mesma promise
-// pra não disparar /auth/refresh múltiplas vezes (que invalidaria os tokens novos)
+// Várias requests com 401 simultâneas compartilham UMA chamada de refresh,
+// evitando race condition que invalidaria os tokens novos
 let refreshInFlight: Promise<AuthTokens | null> | null = null;
 
 async function attemptRefresh(): Promise<AuthTokens | null> {
   if (refreshInFlight) return refreshInFlight;
 
-  const refreshToken = authStore.getRefreshToken();
-  if (!refreshToken) return null;
-
   refreshInFlight = (async () => {
     try {
+      // credentials: "include" garante envio do cookie HttpOnly mesmo se a base url
+      // mudar pra cross-origin no futuro. Backend lê o refresh do cookie.
       const resp = await fetch("/auth/refresh", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
+        credentials: "include",
       });
       if (!resp.ok) {
         authStore.clear();
@@ -76,6 +74,7 @@ export async function api<T = unknown>(
   const resp = await fetch(path, {
     ...rest,
     headers: finalHeaders,
+    credentials: "include", // sempre envia cookies da mesma origem
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 

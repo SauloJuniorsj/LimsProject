@@ -27,16 +27,76 @@ Empresas de cannabis precisam provar — para reguladores e clientes — onde ca
 
 ## 🏗️ Arquitetura
 
-Onion / Clean Architecture com 4 camadas:
+Onion / Clean Architecture com 4 camadas. Nenhuma camada interna conhece as externas. `ILimsDbContext` abstrai persistência para os serviços de aplicação.
 
-```
-Domain        ← entidades puras (Batch, LabAnalysis, SensorData, BatchStatusHistory…)
-Application   ← interfaces, validators, services, models (DTOs), workers
-Infrastructure ← EF Core DbContext, AuthService, Identity
-API           ← Minimal API endpoints + composition root (Program.cs)
+```mermaid
+flowchart TB
+    subgraph API["API (Minimal Endpoints)"]
+        EP[Auth • Batches • Sensor • Analysis • Users]
+        MW[Middleware<br/>CorrelationId • RateLimit • Auth • Versioning]
+    end
+    subgraph App["Application"]
+        IDB[ILimsDbContext]
+        IAS[IAuthService]
+        IEP[IEventPublisher]
+        ICU[ICurrentUserService]
+        VAL[FluentValidators]
+        WRK[BackgroundServices<br/>RollupWorker • OutboxRelayWorker]
+    end
+    subgraph Dom["Domain"]
+        ENT[Batch • LabAnalysis • SensorData<br/>RefreshToken • OutboxMessage<br/>BatchStatusHistory • BatchDailySummary]
+    end
+    subgraph Inf["Infrastructure"]
+        DBC[AppDbContext<br/>SaveChangesAsync interceptor<br/>audit fields + soft delete]
+        AUTH[AuthService<br/>JWT + refresh rotation]
+        RMQ[RabbitMqClient]
+        OBP[OutboxEventPublisher]
+        HC[HealthChecks<br/>DbContext • Outbox lag • RabbitMQ]
+    end
+    PG[(PostgreSQL)]
+    RBQ[(RabbitMQ<br/>topic lims.events)]
+
+    EP --> MW
+    EP --> IDB
+    EP --> IAS
+    EP --> IEP
+    EP --> VAL
+    IDB -.implementa.-> DBC
+    IAS -.implementa.-> AUTH
+    IEP -.implementa.-> OBP
+    OBP --> DBC
+    AUTH --> DBC
+    DBC --> ENT
+    DBC --> PG
+    WRK --> DBC
+    WRK --> RMQ
+    RMQ --> RBQ
+    HC --> DBC
+    HC --> RMQ
 ```
 
-Nenhuma camada interna conhece as externas. `ILimsDbContext` abstrai persistência para os serviços de aplicação.
+### Fluxo de evento de domínio (outbox pattern)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant API as Endpoint
+    participant DB as PostgreSQL
+    participant W as OutboxRelayWorker
+    participant MQ as RabbitMQ
+
+    User->>API: PATCH /batches/{id}/status
+    API->>DB: UPDATE Batch + INSERT StatusHistory<br/>+ INSERT OutboxMessage (única transação)
+    DB-->>API: OK
+    API-->>User: 200 OK
+    Note over W: poll a cada 2s
+    W->>DB: SELECT WHERE PublishedAt IS NULL
+    DB-->>W: pending messages
+    W->>MQ: BasicPublish lims.batchstatuschangedevent
+    MQ-->>W: ack
+    W->>DB: UPDATE OutboxMessage SET PublishedAt
+    Note over W,MQ: Broker down → Attempts++ + LastError<br/>retry no próximo tick
+```
 
 ---
 
@@ -73,6 +133,7 @@ Nenhuma camada interna conhece as externas. `ILimsDbContext` abstrai persistênc
 **Segurança:**
 - Refresh tokens são 64 bytes random base64 (~88 chars URL-safe)
 - Persistidos como **SHA-256 hash** — DB comprometido ≠ tokens vazados
+- Entregues ao cliente via **cookie HttpOnly + Secure + SameSite=Strict** com `Path=/auth` — JavaScript não consegue ler (XSS-proof), cookie só sobe nas chamadas de auth. Frontend nem vê o refresh token, só o access em memória.
 - **Reuse detection (OWASP):** se um token já revogado é apresentado, TODA a cadeia daquele usuário é revogada (proteção contra roubo de token)
 - Replay do mesmo refresh duas vezes → segunda chamada retorna 401
 
