@@ -1,4 +1,5 @@
 using LimsProject.Application.Interfaces;
+using LimsProject.Domain.Common;
 using LimsProject.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -8,7 +9,17 @@ namespace LimsProject.Infrastructure.Persistence;
 
 public class AppDbContext : IdentityDbContext<IdentityUser>, ILimsDbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    private readonly ICurrentUserService? _currentUser;
+
+    // Constructor curto: usado em testes que instanciam o context direto (RollupServiceTests)
+    public AppDbContext(DbContextOptions<AppDbContext> options) : this(options, null) { }
+
+    // Constructor longo: escolhido pelo DI quando ICurrentUserService está registrado
+    public AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserService? currentUser)
+        : base(options)
+    {
+        _currentUser = currentUser;
+    }
 
     public DbSet<Batch> Batches => Set<Batch>();
     public DbSet<BatchDailySummary> BatchesDailySummaries => Set<BatchDailySummary>();
@@ -35,6 +46,10 @@ public class AppDbContext : IdentityDbContext<IdentityUser>, ILimsDbContext
         // Batch indexes
         modelBuilder.Entity<Batch>().HasIndex(b => b.Strain);
         modelBuilder.Entity<Batch>().HasIndex(b => b.Status);
+
+        // Global query filter: soft-deleted batches são invisíveis pra queries normais.
+        // Use IgnoreQueryFilters() pra inspeção (auditoria, restore, etc).
+        modelBuilder.Entity<Batch>().HasQueryFilter(b => b.DeletedAt == null);
 
         // SensorData: FK + composite index for time-range queries per batch
         modelBuilder.Entity<SensorData>()
@@ -73,5 +88,42 @@ public class AppDbContext : IdentityDbContext<IdentityUser>, ILimsDbContext
         modelBuilder.Entity<OutboxMessage>().ToTable("OutboxMessages");
         modelBuilder.Entity<OutboxMessage>()
             .HasIndex(m => new { m.PublishedAt, m.CreatedAt });
+    }
+
+    /// <summary>
+    /// Interceptor cross-cutting: preenche IAuditable em Added/Modified e converte
+    /// EntityState.Deleted em UPDATE com DeletedAt setado pra entidades ISoftDeletable.
+    /// </summary>
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var user = _currentUser?.GetEmail();
+
+        foreach (var entry in ChangeTracker.Entries<IAuditable>())
+        {
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    entry.Entity.CreatedAt = now;
+                    entry.Entity.CreatedBy = user;
+                    break;
+                case EntityState.Modified:
+                    entry.Entity.UpdatedAt = now;
+                    entry.Entity.UpdatedBy = user;
+                    break;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<ISoftDeletable>())
+        {
+            if (entry.State == EntityState.Deleted)
+            {
+                entry.State = EntityState.Modified;
+                entry.Entity.DeletedAt = now;
+                entry.Entity.DeletedBy = user;
+            }
+        }
+
+        return base.SaveChangesAsync(cancellationToken);
     }
 }

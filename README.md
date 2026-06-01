@@ -5,7 +5,7 @@
 [![CI](https://github.com/saulocintra/LimsProject/actions/workflows/ci.yml/badge.svg)](https://github.com/saulocintra/LimsProject/actions)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![Postgres](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
-![Tests](https://img.shields.io/badge/tests-111%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-118%20passing-brightgreen)
 
 ---
 
@@ -16,6 +16,7 @@ Empresas de cannabis precisam provar — para reguladores e clientes — onde ca
 - **Ciclo de vida do lote** como máquina de estados: `Germination → Growth → Harvested → Testing → Released | Rejected`. Transições inválidas retornam **422 Unprocessable Entity**.
 - **Audit trail completo**: toda mudança de status grava quem, quando e por quê (incluindo a criação inicial e mudanças automáticas via análise laboratorial).
 - **Compliance de cânhamo**: lote com THC > 0.3% não pode ser aprovado (regra de validação na camada de aplicação).
+- **Soft delete + audit trail por campo**: `Batch` implementa `IAuditable` + `ISoftDeletable`. Um interceptor no `SaveChangesAsync` preenche `CreatedBy/UpdatedAt/UpdatedBy` automaticamente e converte DELETEs em UPDATEs com `DeletedAt` — global query filter esconde os apagados de queries normais (`IgnoreQueryFilters()` pra inspecionar). Endpoints **não mudam**.
 - **Rollup em background**: consolida milhões de leituras de sensores em sumários diários (min/max/avg/count), processando apenas lotes ativos.
 - **Telemetria de cultivo**: cada leitura de temperatura atualiza `Batch.CurrentTemperature` e fica disponível paginada.
 - **Certificate of Analysis (CoA)**: endpoint único que agrega lote + análises + condições ambientais agregadas + ciclo de vida + compliance — o documento padrão da indústria.
@@ -208,6 +209,33 @@ Métricas customizadas expostas via `Meter` "LimsProject":
 | `lims.status.transitions` | Counter | `from`, `to` | Mudanças de status de lote |
 
 Mais traces HTTP do ASP.NET Core e métricas de runtime (.NET GC, heap, thread pool). Console exporter por padrão; em produção, configurar OTLP via env var `OTEL_EXPORTER_OTLP_ENDPOINT`. Desativado no ambiente `Testing` para não poluir output.
+
+---
+
+## 🗃️ Soft delete + audit fields (cross-cutting)
+
+Interfaces no Domain layer: `IAuditable` (CreatedAt/CreatedBy/UpdatedAt/UpdatedBy) e `ISoftDeletable` (DeletedAt/DeletedBy). `Batch` implementa as duas. **Endpoints não tocam nesses campos** — toda a lógica vive no `AppDbContext.SaveChangesAsync`:
+
+```csharp
+foreach (var entry in ChangeTracker.Entries<IAuditable>())
+{
+    if (entry.State == EntityState.Added)    entry.Entity.CreatedAt = now; ...
+    if (entry.State == EntityState.Modified) entry.Entity.UpdatedAt = now; ...
+}
+
+foreach (var entry in ChangeTracker.Entries<ISoftDeletable>())
+{
+    if (entry.State == EntityState.Deleted)
+    {
+        entry.State = EntityState.Modified;  // converte DELETE em UPDATE
+        entry.Entity.DeletedAt = now;
+    }
+}
+```
+
+A identidade do usuário vem via `ICurrentUserService` (abstrai `IHttpContextAccessor`). Em workers de background, `GetEmail()` retorna `null` graciosamente — campo fica vazio.
+
+**Global query filter** `b => b.DeletedAt == null` em `Batch` faz com que `db.Batches.Find/Any/Where` automaticamente excluam soft-deleted. `IgnoreQueryFilters()` permite inspeção pra auditoria. Tipagem das interfaces (`ChangeTracker.Entries<IAuditable>()`) garante que outras entidades como `RefreshToken`, `OutboxMessage`, `BatchStatusHistory` **não** são afetadas pelo interceptor — opt-in via interface.
 
 ---
 

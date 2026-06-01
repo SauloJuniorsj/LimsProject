@@ -31,6 +31,11 @@ if (!builder.Environment.IsEnvironment("Testing"))
 }
 builder.Services.AddScoped<ILimsDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
+// Identity do usuário atual — capturada por interceptor de SaveChangesAsync pra
+// preencher CreatedBy/UpdatedBy/DeletedBy automaticamente em entidades auditáveis.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
 // Identity
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(opt =>
     {
