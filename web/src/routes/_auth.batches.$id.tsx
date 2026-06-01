@@ -14,6 +14,7 @@ import { BatchStatusBadge } from "@/components/BatchStatusBadge";
 import { NewAnalysisForm } from "@/components/NewAnalysisForm";
 import { SensorDataChart } from "@/components/SensorDataChart";
 import { SensorReadingInput } from "@/components/SensorReadingInput";
+import { SensorReadingsTable } from "@/components/SensorReadingsTable";
 import { fmtDateTime, fmtPercent, fmtTemperature } from "@/lib/format";
 import { ApiError } from "@/lib/api";
 import { BatchStatus, BatchStatusLabel, type BatchStatusValue } from "@/types/api";
@@ -184,12 +185,15 @@ function BatchDetail() {
 
         {/* Telemetria — só faz sentido nos estados ativos */}
         {!isTerminal && (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <SensorDataChart batchId={id} />
+          <>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <SensorDataChart batchId={id} />
+              </div>
+              <SensorReadingInput batchId={id} />
             </div>
-            <SensorReadingInput batchId={id} />
-          </div>
+            <SensorReadingsTable batchId={id} />
+          </>
         )}
 
         {/* Form de análise — só quando lote está em pipeline (não terminal) */}
