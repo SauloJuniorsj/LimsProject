@@ -41,7 +41,7 @@ public class LimsWebApplicationFactory : WebApplicationFactory<Program>
 
         var response = await client.PostAsJsonAsync("/auth/login", new { email, password });
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        return body.GetProperty("token").GetString()!;
+        return body.GetProperty("accessToken").GetString()!;
     }
 
     public async Task<HttpClient> CreateAuthenticatedClientAsync(string role = "Admin")

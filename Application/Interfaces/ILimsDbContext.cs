@@ -10,5 +10,6 @@ public interface ILimsDbContext
     DbSet<BatchDailySummary> BatchesDailySummaries { get; }
     DbSet<LabAnalysis> LabAnalyses { get; }
     DbSet<BatchStatusHistory> BatchStatusHistories { get; }
+    DbSet<RefreshToken> RefreshTokens { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -5,7 +5,7 @@
 [![CI](https://github.com/saulocintra/LimsProject/actions/workflows/ci.yml/badge.svg)](https://github.com/saulocintra/LimsProject/actions)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![Postgres](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
-![Tests](https://img.shields.io/badge/tests-98%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-107%20passing-brightgreen)
 
 ---
 
@@ -43,7 +43,7 @@ Nenhuma camada interna conhece as externas. `ILimsDbContext` abstrai persistênc
 |---|---|
 | Runtime | .NET 10, ASP.NET Core Minimal APIs |
 | Persistência | PostgreSQL 16 + Entity Framework Core 10 (Npgsql) |
-| Autenticação | ASP.NET Core Identity + JWT Bearer + Roles (`Admin`, `Lab`) |
+| Autenticação | ASP.NET Core Identity + JWT Bearer (access 1h) + **refresh tokens com rotation + reuse detection (OWASP)** + Roles (`Admin`, `Lab`) |
 | Validação | FluentValidation (validators no Application layer) |
 | Background | `BackgroundService` + `IServiceScopeFactory` para scopes seguros |
 | Rate limiting | `Microsoft.AspNetCore.RateLimiting` (fixed window no `/auth/login`) |
@@ -58,8 +58,20 @@ Nenhuma camada interna conhece as externas. `ILimsDbContext` abstrai persistênc
 
 ## 🔐 Auth & Permissões
 
+### Fluxo de tokens (production-grade)
+
 - `POST /auth/register` — anônimo, registra usuário com role `Lab` ou `Admin`.
-- `POST /auth/login` — anônimo, **rate-limited** (30 req/min/servidor, configurável), retorna JWT (HMAC-SHA256, 8h).
+- `POST /auth/login` — anônimo, **rate-limited** (30 req/min, configurável), retorna `{ accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt }`. Access token vive **1h**, refresh token vive **30 dias**.
+- `POST /auth/refresh` — anônimo, **rate-limited**, body `{ refreshToken }`, retorna novos tokens. **Rotation:** o refresh antigo é invalidado a cada uso (one-time-use).
+- `POST /auth/logout` — anônimo, body `{ refreshToken }`, idempotente (204 sempre). Revoga o refresh token.
+
+**Segurança:**
+- Refresh tokens são 64 bytes random base64 (~88 chars URL-safe)
+- Persistidos como **SHA-256 hash** — DB comprometido ≠ tokens vazados
+- **Reuse detection (OWASP):** se um token já revogado é apresentado, TODA a cadeia daquele usuário é revogada (proteção contra roubo de token)
+- Replay do mesmo refresh duas vezes → segunda chamada retorna 401
+
+### Matriz de permissões
 
 | Endpoint | Permissão |
 |---|---|
@@ -121,6 +133,39 @@ dotnet test
 - **Integration tests** (TestServer + EF InMemory): auth, batches CRUD/paginação/filtros/transições, análises, sensor data, daily summaries, status history, segurança (401/403)
 
 Coverage com exclusões (migrations, generated files) via `coverlet.runsettings`.
+
+---
+
+## 🚨 Errors: Problem Details (RFC 7807) em toda a API
+
+Toda resposta de erro segue [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) — JSON estruturado com `type`, `title`, `status`, `detail`, e extensões custom quando aplicável. Exemplo de transição de status inválida:
+
+```json
+HTTP/1.1 422 Unprocessable Entity
+Content-Type: application/problem+json
+
+{
+  "title": "Invalid status transition",
+  "status": 422,
+  "detail": "Transição inválida: Germination → Harvested.",
+  "currentStatus": "Germination",
+  "requestedStatus": "Harvested",
+  "allowedTransitions": ["Growth"]
+}
+```
+
+Factory centralizada em [`API/Problems.cs`](API/Problems.cs) evita strings de erro espalhadas e garante consistência.
+
+---
+
+## 🪪 Correlation IDs
+
+Todo request carrega um `X-Correlation-Id` (recebido do cliente ou gerado server-side). O middleware:
+- Devolve o ID no response header (cliente consegue referenciar)
+- Substitui `HttpContext.TraceIdentifier`
+- Empurra como **log scope** — toda linha de log do request carrega `CorrelationId={id}`
+
+Pronto pra correlacionar logs entre microsserviços / camadas / loadbalancers.
 
 ---
 

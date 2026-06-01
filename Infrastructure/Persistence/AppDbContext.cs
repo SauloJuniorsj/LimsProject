@@ -15,6 +15,7 @@ public class AppDbContext : IdentityDbContext<IdentityUser>, ILimsDbContext
     public DbSet<SensorData> SensorData => Set<SensorData>();
     public DbSet<LabAnalysis> LabAnalyses => Set<LabAnalysis>();
     public DbSet<BatchStatusHistory> BatchStatusHistories => Set<BatchStatusHistory>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -58,5 +59,12 @@ public class AppDbContext : IdentityDbContext<IdentityUser>, ILimsDbContext
             .HasOne<Batch>().WithMany().HasForeignKey(h => h.BatchId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<BatchStatusHistory>()
             .HasIndex(h => new { h.BatchId, h.ChangedAt });
+
+        // RefreshToken: lookup por hash (unique), filtragem por usuário
+        modelBuilder.Entity<RefreshToken>().ToTable("RefreshTokens");
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(t => t.TokenHash).IsUnique();
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(t => t.UserId);
     }
 }

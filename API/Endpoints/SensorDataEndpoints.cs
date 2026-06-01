@@ -1,4 +1,5 @@
 using FluentValidation;
+using LimsProject.API;
 using LimsProject.Application.Interfaces;
 using LimsProject.Application.Models;
 using LimsProject.Domain.Entities;
@@ -21,7 +22,7 @@ public static class SensorDataEndpoints
                 return Results.ValidationProblem(result.ToDictionary());
 
             var batch = await db.Batches.FindAsync(id);
-            if (batch is null) return Results.NotFound("Lote não encontrado.");
+            if (batch is null) return Problems.BatchNotFound();
 
             var reading = new SensorData
             {
@@ -44,7 +45,7 @@ public static class SensorDataEndpoints
             int pageSize = 50) =>
         {
             var exists = await db.Batches.AsNoTracking().AnyAsync(b => b.Id == id);
-            if (!exists) return Results.NotFound("Lote não encontrado.");
+            if (!exists) return Problems.BatchNotFound();
 
             pageSize = Math.Clamp(pageSize, 1, 200);
             page = Math.Max(1, page);

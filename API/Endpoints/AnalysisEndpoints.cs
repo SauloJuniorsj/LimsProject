@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FluentValidation;
+using LimsProject.API;
 using LimsProject.Application.Events;
 using LimsProject.Application.Interfaces;
 using LimsProject.Application.Observability;
@@ -31,7 +32,7 @@ public static class AnalysisEndpoints
                 return Results.ValidationProblem(validationResult.ToDictionary());
 
             var batch = await db.Batches.FindAsync(id);
-            if (batch is null) return Results.NotFound("Lote não encontrado.");
+            if (batch is null) return Problems.BatchNotFound();
 
             db.LabAnalyses.Add(analysis);
 
@@ -65,7 +66,7 @@ public static class AnalysisEndpoints
         app.MapGet("/batches/{id}/analyses", async (Guid id, ILimsDbContext db) =>
         {
             var exists = await db.Batches.AsNoTracking().AnyAsync(b => b.Id == id);
-            if (!exists) return Results.NotFound("Lote não encontrado.");
+            if (!exists) return Problems.BatchNotFound();
 
             var analyses = await db.LabAnalyses
                 .AsNoTracking()

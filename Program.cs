@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using LimsProject.API.Endpoints;
+using LimsProject.API.Middleware;
 using LimsProject.Application.Interfaces;
 using LimsProject.Application.Observability;
 using LimsProject.Application.Services;
@@ -180,6 +181,7 @@ else
     }
 }
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 

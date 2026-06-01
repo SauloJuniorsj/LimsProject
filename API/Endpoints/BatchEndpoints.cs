@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FluentValidation;
+using LimsProject.API;
 using LimsProject.Application.Events;
 using LimsProject.Application.Interfaces;
 using LimsProject.Application.Models;
@@ -77,7 +78,7 @@ public static class BatchEndpoints
         app.MapGet("/batches/{id}/summary", async (Guid id, ILimsDbContext db) =>
         {
             var batch = await db.Batches.FirstOrDefaultAsync(b => b.Id == id);
-            return batch is null ? Results.NotFound("Lote não encontrado.") : Results.Ok(batch);
+            return batch is null ? Problems.BatchNotFound() : Results.Ok(batch);
         }).RequireAuthorization();
 
         app.MapPatch("/batches/{id}/status", async (
@@ -89,14 +90,10 @@ public static class BatchEndpoints
             IEventPublisher events) =>
         {
             var batch = await db.Batches.FindAsync(id);
-            if (batch is null) return Results.NotFound("Lote não encontrado.");
+            if (batch is null) return Problems.BatchNotFound();
 
             if (!ValidTransitions.TryGetValue(batch.Status, out var allowed) || !allowed.Contains(req.Status))
-            {
-                var permitted = allowed?.Length > 0 ? string.Join(", ", allowed) : "nenhuma";
-                return Results.UnprocessableEntity(
-                    $"Transição inválida: {batch.Status} → {req.Status}. Permitido: {permitted}.");
-            }
+                return Problems.InvalidStatusTransition(batch.Status, req.Status, allowed ?? []);
 
             var from = batch.Status;
             batch.Status = req.Status;
@@ -114,10 +111,10 @@ public static class BatchEndpoints
         app.MapDelete("/batches/{id}", async (Guid id, ILimsDbContext db) =>
         {
             var batch = await db.Batches.FindAsync(id);
-            if (batch is null) return Results.NotFound("Lote não encontrado.");
+            if (batch is null) return Problems.BatchNotFound();
 
             if (batch.Status is BatchStatus.Released or BatchStatus.Testing)
-                return Results.Conflict($"Não é possível excluir um lote com status '{batch.Status}'.");
+                return Problems.CannotDeleteBatch(batch.Status);
 
             db.Batches.Remove(batch);
             await db.SaveChangesAsync();
@@ -131,7 +128,7 @@ public static class BatchEndpoints
             DateTime? to = null) =>
         {
             var exists = await db.Batches.AsNoTracking().AnyAsync(b => b.Id == id);
-            if (!exists) return Results.NotFound("Lote não encontrado.");
+            if (!exists) return Problems.BatchNotFound();
 
             var query = db.BatchesDailySummaries
                 .AsNoTracking()
@@ -153,7 +150,7 @@ public static class BatchEndpoints
         app.MapGet("/batches/{id}/status-history", async (Guid id, ILimsDbContext db) =>
         {
             var exists = await db.Batches.AsNoTracking().AnyAsync(b => b.Id == id);
-            if (!exists) return Results.NotFound("Lote não encontrado.");
+            if (!exists) return Problems.BatchNotFound();
 
             var history = await db.BatchStatusHistories
                 .AsNoTracking()
@@ -167,7 +164,7 @@ public static class BatchEndpoints
         app.MapGet("/batches/{id}/certificate-of-analysis", async (Guid id, ILimsDbContext db) =>
         {
             var batch = await db.Batches.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
-            if (batch is null) return Results.NotFound("Lote não encontrado.");
+            if (batch is null) return Problems.BatchNotFound();
 
             var analyses = await db.LabAnalyses.AsNoTracking()
                 .Where(a => a.BatchId == id)
