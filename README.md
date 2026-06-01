@@ -7,6 +7,7 @@
 ![Postgres](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
 ![Tests](https://img.shields.io/badge/tests-129%20passing-brightgreen)
 ![Release](https://img.shields.io/badge/release-v1.0.0-blue)
+![Frontend](https://img.shields.io/badge/frontend-React%2019%20%2B%20Vite-61DAFB?logo=react)
 
 ---
 
@@ -91,6 +92,18 @@ Nenhuma camada interna conhece as externas. `ILimsDbContext` abstrai persistênc
 | `GET /batches/{id}/status-history` | autenticado |
 | `GET /batches/{id}/certificate-of-analysis` | autenticado |
 | `POST /debug/populate-elegant` | `Admin` (apenas em Development/Testing) |
+
+---
+
+## 🎨 Frontend (web/)
+
+Aplicação SPA em [`web/`](web/) — React 19 + Vite + TypeScript + Tailwind + TanStack Router/Query + Recharts + Biome. Veja [`web/README.md`](web/README.md) pra detalhes.
+
+```bash
+cd web && npm install && npm run dev   # http://localhost:5173
+```
+
+Mesma origin que a API via Vite proxy (zero CORS). Páginas: login, dashboard (KPIs), lista de lotes (filtros + paginação), detalhe do lote (timeline + análises), Certificate of Analysis printable.
 
 ---
 
