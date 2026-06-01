@@ -1,5 +1,5 @@
 import { Link, Outlet, useRouter } from "@tanstack/react-router";
-import { LayoutDashboard, Sprout, Sun, Moon, LogOut } from "lucide-react";
+import { LayoutDashboard, Sprout, Sun, Moon, LogOut, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/batches", label: "Lotes", icon: Sprout },
+  { to: "/users", label: "Usuários", icon: Users },
 ];
 
 export function AppShell() {
