@@ -43,6 +43,19 @@ public class AppDbContext : IdentityDbContext<IdentityUser>, ILimsDbContext
             .Property(b => b.AverageTemperature)
             .HasColumnName("AvarageTemperature");
 
+        // Decimal precision — explícito pra silenciar EF warnings e ter schema previsível
+        modelBuilder.Entity<Batch>().Property(b => b.ThcPercentage).HasPrecision(5, 2);
+        modelBuilder.Entity<Batch>().Property(b => b.CbdPercentage).HasPrecision(5, 2);
+        modelBuilder.Entity<Batch>().Property(b => b.CurrentMoisture).HasPrecision(5, 2);
+        modelBuilder.Entity<Batch>().Property(b => b.CurrentTemperature).HasPrecision(5, 2);
+        modelBuilder.Entity<Batch>().Property(b => b.AverageTemperature).HasPrecision(5, 2);
+        modelBuilder.Entity<SensorData>().Property(s => s.Temperature).HasPrecision(5, 2);
+        modelBuilder.Entity<LabAnalysis>().Property(a => a.THC).HasPrecision(5, 2);
+        modelBuilder.Entity<LabAnalysis>().Property(a => a.CBD).HasPrecision(5, 2);
+        modelBuilder.Entity<BatchDailySummary>().Property(s => s.AvgTemperature).HasPrecision(5, 2);
+        modelBuilder.Entity<BatchDailySummary>().Property(s => s.MinTemperature).HasPrecision(5, 2);
+        modelBuilder.Entity<BatchDailySummary>().Property(s => s.MaxTemperature).HasPrecision(5, 2);
+
         // Batch indexes
         modelBuilder.Entity<Batch>().HasIndex(b => b.Strain);
         modelBuilder.Entity<Batch>().HasIndex(b => b.Status);

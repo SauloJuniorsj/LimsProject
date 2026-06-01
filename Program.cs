@@ -242,6 +242,7 @@ var versionSet = app.NewApiVersionSet()
 
 var v1 = app.MapGroup("").WithApiVersionSet(versionSet).HasApiVersion(1, 0);
 v1.MapAuthEndpoints();
+v1.MapUsersEndpoints();
 v1.MapBatchEndpoints();
 v1.MapSensorDataEndpoints();
 v1.MapAnalysisEndpoints();

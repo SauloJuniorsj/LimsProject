@@ -5,7 +5,7 @@
 [![CI](https://github.com/saulocintra/LimsProject/actions/workflows/ci.yml/badge.svg)](https://github.com/saulocintra/LimsProject/actions)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![Postgres](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
-![Tests](https://img.shields.io/badge/tests-129%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-138%20passing-brightgreen)
 ![Release](https://img.shields.io/badge/release-v1.0.0-blue)
 ![Frontend](https://img.shields.io/badge/frontend-React%2019%20%2B%20Vite-61DAFB?logo=react)
 
@@ -91,6 +91,9 @@ Nenhuma camada interna conhece as externas. `ILimsDbContext` abstrai persistênc
 | `GET /batches/{id}/daily-summaries` | autenticado |
 | `GET /batches/{id}/status-history` | autenticado |
 | `GET /batches/{id}/certificate-of-analysis` | autenticado |
+| `GET /users` (paginado, filtro por email) | `Admin` |
+| `DELETE /users/{id}` (não permite auto-exclusão → 422) | `Admin` |
+| `PUT /users/{id}/role` (Lab\|Admin, bloqueia auto-rebaixamento) | `Admin` |
 | `POST /debug/populate-elegant` | `Admin` (apenas em Development/Testing) |
 
 ---
