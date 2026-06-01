@@ -3,6 +3,7 @@ import { useBatchesList } from "@/hooks/useBatches";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BatchStatus, BatchStatusLabel, type Batch, type BatchStatusValue } from "@/types/api";
+import { ActivityChart } from "@/components/ActivityChart";
 import { BatchStatusBadge } from "@/components/BatchStatusBadge";
 import { fmtDate } from "@/lib/format";
 import {
@@ -83,6 +84,8 @@ function Dashboard() {
           icon={<XCircle className="h-4 w-4 text-red-500" />}
         />
       </div>
+
+      <ActivityChart />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
