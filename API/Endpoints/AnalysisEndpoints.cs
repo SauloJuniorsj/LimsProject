@@ -13,7 +13,7 @@ namespace LimsProject.API.Endpoints;
 
 public static class AnalysisEndpoints
 {
-    public static void MapAnalysisEndpoints(this WebApplication app)
+    public static void MapAnalysisEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/batches/{id}/analysis", async (
             Guid id,

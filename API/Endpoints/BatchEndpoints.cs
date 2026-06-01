@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FluentValidation;
 using LimsProject.API;
+using LimsProject.Application.Caching;
 using LimsProject.Application.Events;
 using LimsProject.Application.Interfaces;
 using LimsProject.Application.Models;
@@ -9,6 +10,7 @@ using LimsProject.Application.Services;
 using LimsProject.Domain.Entities;
 using LimsProject.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace LimsProject.API.Endpoints;
 
@@ -24,7 +26,7 @@ public static class BatchEndpoints
         [BatchStatus.Rejected]    = [],
     };
 
-    public static void MapBatchEndpoints(this WebApplication app)
+    public static void MapBatchEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/batches", async (
             Batch batch,
@@ -51,7 +53,11 @@ public static class BatchEndpoints
             int page = 1,
             int pageSize = 20,
             string? strain = null,
-            BatchStatus? status = null) =>
+            BatchStatus? status = null,
+            string? sortBy = null,
+            string? sortDir = null,
+            DateTime? createdAfter = null,
+            DateTime? createdBefore = null) =>
         {
             pageSize = Math.Clamp(pageSize, 1, 100);
             page = Math.Max(1, page);
@@ -64,9 +70,25 @@ public static class BatchEndpoints
             if (status.HasValue)
                 query = query.Where(b => b.Status == status.Value);
 
+            if (createdAfter.HasValue)
+                query = query.Where(b => b.CreatedAt >= createdAfter.Value);
+
+            if (createdBefore.HasValue)
+                query = query.Where(b => b.CreatedAt <= createdBefore.Value);
+
+            // Sort whitelist explícita — evita SQL injection via param e dá erro claro
+            var ascending = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase);
+            query = (sortBy?.ToLowerInvariant()) switch
+            {
+                "strain"  => ascending ? query.OrderBy(b => b.Strain)    : query.OrderByDescending(b => b.Strain),
+                "status"  => ascending ? query.OrderBy(b => b.Status)    : query.OrderByDescending(b => b.Status),
+                "createdat" or null or "" =>
+                             ascending ? query.OrderBy(b => b.CreatedAt) : query.OrderByDescending(b => b.CreatedAt),
+                _ => query.OrderByDescending(b => b.CreatedAt)
+            };
+
             var total = await query.CountAsync();
             var items = await query
-                .OrderByDescending(b => b.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -74,9 +96,15 @@ public static class BatchEndpoints
             return Results.Ok(new PagedResult<Batch>(items, page, pageSize, total));
         }).RequireAuthorization();
 
-        app.MapGet("/batches/{id}/summary", async (Guid id, ILimsDbContext db) =>
+        app.MapGet("/batches/{id}/summary", async (Guid id, ILimsDbContext db, IMemoryCache cache) =>
         {
-            var batch = await db.Batches.FirstOrDefaultAsync(b => b.Id == id);
+            var key = CacheKeys.BatchSummary(id);
+            var batch = await cache.GetOrCreateAsync(key, async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30);
+                entry.SlidingExpiration = TimeSpan.FromSeconds(10);
+                return await db.Batches.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
+            });
             return batch is null ? Problems.BatchNotFound() : Results.Ok(batch);
         }).RequireAuthorization();
 
@@ -86,7 +114,8 @@ public static class BatchEndpoints
             ILimsDbContext db,
             ClaimsPrincipal user,
             LimsMetrics metrics,
-            IEventPublisher events) =>
+            IEventPublisher events,
+            IMemoryCache cache) =>
         {
             var batch = await db.Batches.FindAsync(id);
             if (batch is null) return Problems.BatchNotFound();
@@ -103,10 +132,11 @@ public static class BatchEndpoints
                 req.Reason, DateTime.UtcNow));
             await db.SaveChangesAsync();
             metrics.StatusTransition(from.ToString(), req.Status.ToString());
+            cache.Remove(CacheKeys.BatchSummary(id));
             return Results.Ok(batch);
         }).RequireAuthorization("AdminOnly");
 
-        app.MapDelete("/batches/{id}", async (Guid id, ILimsDbContext db) =>
+        app.MapDelete("/batches/{id}", async (Guid id, ILimsDbContext db, IMemoryCache cache) =>
         {
             var batch = await db.Batches.FindAsync(id);
             if (batch is null) return Problems.BatchNotFound();
@@ -116,6 +146,7 @@ public static class BatchEndpoints
 
             db.Batches.Remove(batch);
             await db.SaveChangesAsync();
+            cache.Remove(CacheKeys.BatchSummary(id));
             return Results.NoContent();
         }).RequireAuthorization("AdminOnly");
 

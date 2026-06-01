@@ -8,6 +8,9 @@ namespace LimsProject.Infrastructure.Messaging;
 public interface IRabbitMqClient
 {
     Task PublishAsync(string routingKey, ReadOnlyMemory<byte> payload, CancellationToken ct = default);
+
+    /// <summary>Garante uma conexão ativa — usado pelo healthcheck pra verificar broker.</summary>
+    Task ProbeAsync(CancellationToken ct = default);
 }
 
 /// <summary>
@@ -27,6 +30,13 @@ public class RabbitMqClient(
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private IConnection? _connection;
     private IChannel? _channel;
+
+    public async Task ProbeAsync(CancellationToken ct = default)
+    {
+        var channel = await EnsureChannelAsync(ct);
+        if (!channel.IsOpen)
+            throw new InvalidOperationException("RabbitMQ channel is not open");
+    }
 
     public async Task PublishAsync(string routingKey, ReadOnlyMemory<byte> payload, CancellationToken ct = default)
     {

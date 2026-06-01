@@ -6,7 +6,7 @@ public static class AuthEndpoints
 {
     private static readonly string[] ValidRoles = ["Lab", "Admin"];
 
-    public static void MapAuthEndpoints(this WebApplication app)
+    public static void MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/auth/register", async (RegisterRequest req, IAuthService auth) =>
         {

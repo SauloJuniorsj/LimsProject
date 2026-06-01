@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text;
 using System.Threading.RateLimiting;
+using Asp.Versioning;
 using Microsoft.AspNetCore.RateLimiting;
 using LimsProject.API.Endpoints;
 using LimsProject.API.Middleware;
@@ -9,6 +10,7 @@ using LimsProject.Application.Observability;
 using LimsProject.Application.Services;
 using LimsProject.Application.Workers;
 using LimsProject.Infrastructure.Auth;
+using LimsProject.Infrastructure.HealthChecks;
 using LimsProject.Infrastructure.Messaging;
 using LimsProject.Infrastructure.Persistence;
 using FluentValidation;
@@ -117,6 +119,19 @@ if (!builder.Environment.IsEnvironment("Testing"))
             .AddConsoleExporter());
 }
 
+// API versioning — header `api-version: 1.0` ou query `?api-version=1.0`.
+// Sem header → fallback pra v1.0 (zero break em clientes existentes).
+// Response carrega `api-supported-versions` automaticamente.
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = ApiVersionReader.Combine(
+        new HeaderApiVersionReader("api-version"),
+        new QueryStringApiVersionReader("api-version"));
+});
+
 // Rate limiting — proteção contra brute-force no login
 builder.Services.AddRateLimiter(options =>
 {
@@ -133,9 +148,15 @@ builder.Services.AddRateLimiter(options =>
 // Problem Details — respostas de erro padronizadas (RFC 7807)
 builder.Services.AddProblemDetails();
 
-// Healthcheck
-builder.Services.AddHealthChecks()
-    .AddDbContextCheck<AppDbContext>();
+// IMemoryCache pra GETs read-heavy (batch summary). Invalidação targeted nos writes.
+builder.Services.AddMemoryCache();
+
+// Healthcheck — DbContext + RabbitMQ connectivity (se habilitado) + Outbox lag
+var healthChecks = builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>()
+    .AddCheck<OutboxLagHealthCheck>("outbox-lag", tags: ["outbox"]);
+if (rabbitEnabled)
+    healthChecks.AddCheck<RabbitMqHealthCheck>("rabbitmq", tags: ["broker"]);
 
 // API / Swagger com botão de autenticação JWT
 builder.Services.AddEndpointsApiExplorer();
@@ -211,11 +232,21 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health").AllowAnonymous();
-app.MapAuthEndpoints();
-app.MapBatchEndpoints();
-app.MapSensorDataEndpoints();
-app.MapAnalysisEndpoints();
-app.MapDebugEndpoints();
+
+// Group versionado v1.0 — adiciona "api-supported-versions: 1.0" em todos os responses
+// (clientes sem header `api-version` caem no default v1.0 via AssumeDefaultVersionWhenUnspecified)
+var versionSet = app.NewApiVersionSet()
+    .HasApiVersion(new ApiVersion(1, 0))
+    .ReportApiVersions()
+    .Build();
+
+var v1 = app.MapGroup("").WithApiVersionSet(versionSet).HasApiVersion(1, 0);
+v1.MapAuthEndpoints();
+v1.MapBatchEndpoints();
+v1.MapSensorDataEndpoints();
+v1.MapAnalysisEndpoints();
+
+app.MapDebugEndpoints(); // fora do version set — debug não é parte da API pública
 
 app.Run();
 

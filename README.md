@@ -5,7 +5,8 @@
 [![CI](https://github.com/saulocintra/LimsProject/actions/workflows/ci.yml/badge.svg)](https://github.com/saulocintra/LimsProject/actions)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![Postgres](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
-![Tests](https://img.shields.io/badge/tests-118%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-129%20passing-brightgreen)
+![Release](https://img.shields.io/badge/release-v1.0.0-blue)
 
 ---
 
@@ -48,7 +49,9 @@ Nenhuma camada interna conhece as externas. `ILimsDbContext` abstrai persistênc
 | Validação | FluentValidation (validators no Application layer) |
 | Background | `BackgroundService` + `IServiceScopeFactory` para scopes seguros |
 | Rate limiting | `Microsoft.AspNetCore.RateLimiting` (fixed window no `/auth/login`) |
-| Observabilidade | Health checks (`/health`) + **OpenTelemetry** (traces ASP.NET Core + métricas custom de domínio + runtime metrics, Console exporter) |
+| API versioning | `Asp.Versioning.Http` — header `api-version` ou query string, default v1.0 não-breaking |
+| Caching | `IMemoryCache` em GETs read-heavy com invalidação targeted nos writes |
+| Observabilidade | Health checks (`/health`) + custom (Outbox lag, RabbitMQ probe) + **OpenTelemetry** (traces ASP.NET Core + métricas custom de domínio + runtime metrics, Console exporter) |
 | Messaging | **RabbitMQ** topic exchange (`lims.events`) + **Outbox pattern** com worker de relay, retry e dead-letter implícito |
 | Documentação | Swashbuckle (Swagger UI com botão de auth Bearer) |
 | Testes | xUnit + FluentAssertions + NSubstitute + EF InMemory + WebApplicationFactory |
@@ -209,6 +212,21 @@ Métricas customizadas expostas via `Meter` "LimsProject":
 | `lims.status.transitions` | Counter | `from`, `to` | Mudanças de status de lote |
 
 Mais traces HTTP do ASP.NET Core e métricas de runtime (.NET GC, heap, thread pool). Console exporter por padrão; em produção, configurar OTLP via env var `OTEL_EXPORTER_OTLP_ENDPOINT`. Desativado no ambiente `Testing` para não poluir output.
+
+---
+
+## 🏷️ API versioning + 🚀 caching + 🩺 health checks
+
+**Versioning** (`Asp.Versioning.Http`): default `v1.0` aplicado a todos os endpoints num route group `app.MapGroup("").WithApiVersionSet(...)`. Cliente envia `api-version: 1.0` no header ou `?api-version=1.0` na query. Sem header → fallback pra v1.0 (`AssumeDefaultVersionWhenUnspecified`). Response carrega `api-supported-versions: 1.0` automaticamente. Adicionar v2 = criar segundo group `.HasApiVersion(2, 0)` — coexistência sem deprecar v1.
+
+**Caching** (`IMemoryCache`): `GET /batches/{id}/summary` cacheia por 30s (sliding 10s). Chaves centralizadas em [`Application/Caching/CacheKeys.cs`](Application/Caching/CacheKeys.cs). Invalidação **targeted** nos writes (`PATCH /status` e `DELETE`) → `cache.Remove(...)` da chave específica. Lista de batches **não é cacheada** (combinatória de filtros geraria muitas chaves obsoletas; o cliente costuma paginar e mudar filtros).
+
+**Health checks** (`/health`):
+- DbContext connectivity (Identity + LIMS DB)
+- `OutboxLagHealthCheck` — conta `OutboxMessages` com `PublishedAt = null AND CreatedAt < now - 1min`. 0 = healthy, 1-9 = degraded, 10+ = unhealthy (sinaliza broker fora ou worker travado)
+- `RabbitMqHealthCheck` — chama `IRabbitMqClient.ProbeAsync` (só registrado quando broker está habilitado)
+
+**Sorting + filtering avançado** em `GET /batches`: `sortBy=createdAt|strain|status` (whitelist explícita) + `sortDir=asc|desc` + `createdAfter` / `createdBefore`. Default: createdAt DESC. Valores inválidos caem no default sem erro.
 
 ---
 

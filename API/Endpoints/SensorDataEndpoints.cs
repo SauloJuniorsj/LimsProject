@@ -9,7 +9,7 @@ namespace LimsProject.API.Endpoints;
 
 public static class SensorDataEndpoints
 {
-    public static void MapSensorDataEndpoints(this WebApplication app)
+    public static void MapSensorDataEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/batches/{id}/sensor-data", async (
             Guid id,
