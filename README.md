@@ -5,7 +5,7 @@
 [![CI](https://github.com/saulocintra/LimsProject/actions/workflows/ci.yml/badge.svg)](https://github.com/saulocintra/LimsProject/actions)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![Postgres](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
-![Tests](https://img.shields.io/badge/tests-107%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-111%20passing-brightgreen)
 
 ---
 
@@ -48,7 +48,7 @@ Nenhuma camada interna conhece as externas. `ILimsDbContext` abstrai persistênc
 | Background | `BackgroundService` + `IServiceScopeFactory` para scopes seguros |
 | Rate limiting | `Microsoft.AspNetCore.RateLimiting` (fixed window no `/auth/login`) |
 | Observabilidade | Health checks (`/health`) + **OpenTelemetry** (traces ASP.NET Core + métricas custom de domínio + runtime metrics, Console exporter) |
-| Messaging | **RabbitMQ** topic exchange (`lims.events`) com 3 eventos de domínio (publicação fire-and-forget com fallback) |
+| Messaging | **RabbitMQ** topic exchange (`lims.events`) + **Outbox pattern** com worker de relay, retry e dead-letter implícito |
 | Documentação | Swashbuckle (Swagger UI com botão de auth Bearer) |
 | Testes | xUnit + FluentAssertions + NSubstitute + EF InMemory + WebApplicationFactory |
 | Infra | Docker multi-stage + docker-compose (Postgres + API + RabbitMQ) |
@@ -179,9 +179,21 @@ Eventos publicados no exchange topic `lims.events` (durável), com routing keys 
 | `lims.batchstatuschangedevent` | `BatchStatusChangedEvent(BatchId, From, To, ChangedBy, Reason, OccurredAt)` | `PATCH /batches/{id}/status` e mudança automática via análise |
 | `lims.analysiscompletedevent` | `AnalysisCompletedEvent(BatchId, AnalysisId, Thc, Cbd, Passed, OccurredAt)` | `POST /batches/{id}/analysis` |
 
-`IEventPublisher` é abstração no Application layer; `RabbitMqEventPublisher` (lazy connect, JSON, persistent delivery) e `NullEventPublisher` (no-op pra Testing/broker desligado) ficam em Infrastructure. Falhas de broker são logadas mas **não derrubam o request** — fire-and-forget com graceful degradation. (Para produção real, isso evoluiria pro outbox pattern.)
+### Outbox pattern — zero dual-write, zero perda de evento
 
-Habilitado via `RabbitMq__Enabled=true`. O `docker-compose up` já sobe o broker e habilita por default; rodando local sem broker, o `NullEventPublisher` é usado automaticamente.
+`IEventPublisher` é abstração no Application layer com duas implementações:
+
+- **`OutboxEventPublisher`** (broker on) — escreve `OutboxMessage` no DbContext **na mesma transação** da entidade de domínio. Endpoints chamam `events.PublishAsync(...)` *antes* de `SaveChangesAsync` — o save commita batch + outbox row atomicamente.
+- **`NullEventPublisher`** (Testing / broker off) — no-op.
+
+O **`OutboxRelayWorker`** (BackgroundService singleton) polla a cada `Outbox:PollIntervalSeconds` (default 2s), pega `Outbox:BatchSize` mensagens pendentes ordenadas por `CreatedAt`, e despacha pro RabbitMQ via `IRabbitMqClient` (cliente AMQP puro, sem responsabilidade de domain events). Em falha: `Attempts++` e `LastError = ex.Message`. Após `Outbox:MaxAttempts` (default 5) a mensagem fica órfã — dead-letter implícito, fácil de inspecionar por query SQL.
+
+**Resultados:**
+- Processo crasha entre commit do batch e publish? Evento já está na tabela → worker pega depois.
+- Broker offline? Mensagens acumulam até voltar (eventually consistent).
+- Worker requer broker ativo; endpoints **não dependem** do broker em runtime.
+
+Habilitado via `RabbitMq__Enabled=true`. O `docker-compose up` sobe o broker e habilita; rodando local sem broker, `NullEventPublisher` é usado automaticamente.
 
 ---
 

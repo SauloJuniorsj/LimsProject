@@ -75,13 +75,26 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 builder.Services.AddSingleton<LimsMetrics>();
 
-// Event publishing — RabbitMQ se habilitado, NullEventPublisher caso contrário
+// Event publishing — Outbox pattern quando broker está habilitado.
+//
+// Endpoints injetam IEventPublisher e chamam PublishAsync ANTES do SaveChanges:
+//   • OutboxEventPublisher (broker on)  — escreve OutboxMessage na MESMA transação
+//   • NullEventPublisher    (broker off / Testing) — no-op
+//
+// Quando broker on: OutboxRelayWorker polla a tabela e despacha pro RabbitMQ
+// via IRabbitMqClient com retry + LastError. Zero dual-write, zero perda em crash.
 var rabbitEnabled = builder.Configuration.GetValue("RabbitMq:Enabled", false)
     && !builder.Environment.IsEnvironment("Testing");
 if (rabbitEnabled)
-    builder.Services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
+{
+    builder.Services.AddScoped<IEventPublisher, OutboxEventPublisher>();
+    builder.Services.AddSingleton<IRabbitMqClient, RabbitMqClient>();
+    builder.Services.AddHostedService<OutboxRelayWorker>();
+}
 else
-    builder.Services.AddSingleton<IEventPublisher, NullEventPublisher>();
+{
+    builder.Services.AddScoped<IEventPublisher, NullEventPublisher>();
+}
 
 // OpenTelemetry — traces + metrics (desativado em Testing pra não poluir output)
 if (!builder.Environment.IsEnvironment("Testing"))

@@ -46,9 +46,6 @@ public static class AnalysisEndpoints
                 batch.Status = newStatus;
             }
 
-            await db.SaveChangesAsync();
-            metrics.AnalysisCompleted(analysis.IsPassed);
-
             await events.PublishAsync(new AnalysisCompletedEvent(
                 batch.Id, analysis.Id, analysis.THC, analysis.CBD, analysis.IsPassed, DateTime.UtcNow));
             if (previousStatus.HasValue)
@@ -59,6 +56,9 @@ public static class AnalysisEndpoints
                     "Mudança automática via análise laboratorial",
                     DateTime.UtcNow));
             }
+
+            await db.SaveChangesAsync();
+            metrics.AnalysisCompleted(analysis.IsPassed);
 
             return Results.Created($"/batches/{id}/analyses/{analysis.Id}", analysis);
         }).RequireAuthorization("LabOrAdmin");

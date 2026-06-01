@@ -16,6 +16,7 @@ public class AppDbContext : IdentityDbContext<IdentityUser>, ILimsDbContext
     public DbSet<LabAnalysis> LabAnalyses => Set<LabAnalysis>();
     public DbSet<BatchStatusHistory> BatchStatusHistories => Set<BatchStatusHistory>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -66,5 +67,11 @@ public class AppDbContext : IdentityDbContext<IdentityUser>, ILimsDbContext
             .HasIndex(t => t.TokenHash).IsUnique();
         modelBuilder.Entity<RefreshToken>()
             .HasIndex(t => t.UserId);
+
+        // OutboxMessage: o worker polla por (PublishedAt IS NULL ORDER BY CreatedAt) —
+        // índice composto cobre isso direto.
+        modelBuilder.Entity<OutboxMessage>().ToTable("OutboxMessages");
+        modelBuilder.Entity<OutboxMessage>()
+            .HasIndex(m => new { m.PublishedAt, m.CreatedAt });
     }
 }

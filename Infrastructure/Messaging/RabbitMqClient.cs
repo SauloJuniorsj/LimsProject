@@ -1,4 +1,3 @@
-using System.Text.Json;
 using LimsProject.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -6,49 +5,47 @@ using RabbitMQ.Client;
 
 namespace LimsProject.Infrastructure.Messaging;
 
-/// <summary>
-/// Publica eventos de domínio num exchange topic do RabbitMQ.
-///
-/// Conexão e canal são inicializados lazy na primeira publicação (com lock pra ser thread-safe).
-/// Falhas de publicação são logadas mas não propagadas — broker indisponível NÃO derruba o request.
-/// Em produção real, isso deveria ir pra um outbox pattern, mas pra portfolio é fire-and-forget.
-/// </summary>
-public class RabbitMqEventPublisher(
-    IConfiguration config,
-    ILogger<RabbitMqEventPublisher> logger) : IEventPublisher, IAsyncDisposable
+public interface IRabbitMqClient
 {
-    private const string ExchangeName = "lims.events";
+    Task PublishAsync(string routingKey, ReadOnlyMemory<byte> payload, CancellationToken ct = default);
+}
+
+/// <summary>
+/// Cliente AMQP para o broker. NÃO é um IEventPublisher — endpoints não falam com ele direto;
+/// só o OutboxRelayWorker chama, despachando mensagens da tabela OutboxMessages.
+///
+/// Conexão e canal são lazy + thread-safe via SemaphoreSlim. Falhas de publicação são
+/// PROPAGADAS (diferente do design fire-and-forget anterior) — o worker precisa saber pra
+/// incrementar Attempts e fazer retry no próximo tick.
+/// </summary>
+public class RabbitMqClient(
+    IConfiguration config,
+    ILogger<RabbitMqClient> logger) : IRabbitMqClient, IAsyncDisposable
+{
+    public const string ExchangeName = "lims.events";
+
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private IConnection? _connection;
     private IChannel? _channel;
 
-    public async Task PublishAsync<T>(T @event, CancellationToken ct = default) where T : notnull
+    public async Task PublishAsync(string routingKey, ReadOnlyMemory<byte> payload, CancellationToken ct = default)
     {
-        try
+        var channel = await EnsureChannelAsync(ct);
+        var props = new BasicProperties
         {
-            var channel = await EnsureChannelAsync(ct);
-            var routingKey = $"lims.{typeof(T).Name.ToLowerInvariant()}";
-            var body = JsonSerializer.SerializeToUtf8Bytes(@event);
-            var props = new BasicProperties
-            {
-                ContentType = "application/json",
-                DeliveryMode = DeliveryModes.Persistent
-            };
+            ContentType = "application/json",
+            DeliveryMode = DeliveryModes.Persistent
+        };
 
-            await channel.BasicPublishAsync(
-                exchange: ExchangeName,
-                routingKey: routingKey,
-                mandatory: false,
-                basicProperties: props,
-                body: body,
-                cancellationToken: ct);
+        await channel.BasicPublishAsync(
+            exchange: ExchangeName,
+            routingKey: routingKey,
+            mandatory: false,
+            basicProperties: props,
+            body: payload,
+            cancellationToken: ct);
 
-            logger.LogDebug("Published {Type} with routing key {Key}", typeof(T).Name, routingKey);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Falha ao publicar evento {Type} no RabbitMQ", typeof(T).Name);
-        }
+        logger.LogDebug("Published to {Exchange}/{Key}", ExchangeName, routingKey);
     }
 
     private async Task<IChannel> EnsureChannelAsync(CancellationToken ct)

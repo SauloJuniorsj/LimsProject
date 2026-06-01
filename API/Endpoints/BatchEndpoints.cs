@@ -40,10 +40,9 @@ public static class BatchEndpoints
 
             db.Batches.Add(batch);
             StatusHistoryRecorder.Record(db, batch.Id, null, batch.Status, user, "Lote criado");
+            await events.PublishAsync(new BatchCreatedEvent(batch.Id, batch.Strain, DateTime.UtcNow));
             await db.SaveChangesAsync();
             metrics.BatchCreated();
-
-            await events.PublishAsync(new BatchCreatedEvent(batch.Id, batch.Strain, DateTime.UtcNow));
             return Results.Created($"/batches/{batch.Id}", batch);
         }).RequireAuthorization("AdminOnly");
 
@@ -98,13 +97,12 @@ public static class BatchEndpoints
             var from = batch.Status;
             batch.Status = req.Status;
             StatusHistoryRecorder.Record(db, batch.Id, from, req.Status, user, req.Reason);
-            await db.SaveChangesAsync();
-            metrics.StatusTransition(from.ToString(), req.Status.ToString());
-
             await events.PublishAsync(new BatchStatusChangedEvent(
                 batch.Id, from, req.Status,
                 user.FindFirstValue(System.Security.Claims.ClaimTypes.Email) ?? "anonymous",
                 req.Reason, DateTime.UtcNow));
+            await db.SaveChangesAsync();
+            metrics.StatusTransition(from.ToString(), req.Status.ToString());
             return Results.Ok(batch);
         }).RequireAuthorization("AdminOnly");
 
