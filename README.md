@@ -1,6 +1,8 @@
-# 🌿 Seed-to-Sale LIMS
+# 🧪 LIMS — Laboratory Information Management System
 
-**Laboratory Information Management System** para empresas de cannabis: rastreabilidade do cultivo à liberação do lote, com auditoria de mudanças de status, ingestão de sensores e análises laboratoriais com validação de compliance (cânhamo).
+**LIMS production-grade explorando padrões de compliance em indústria regulada** — audit trail cross-cutting, outbox pattern transacional, refresh tokens com rotation OWASP-grade, soft delete com query filter global, OpenTelemetry, healthchecks customizados.
+
+> **Case study escolhido:** cânhamo industrial (limite legal THC ≤ 0.3%). O domínio foi escolhido por ter **a regulação mais rica e fora-do-óbvio** do momento — força decisões de modelagem que um CRUD genérico não força.
 
 [![CI](https://github.com/saulocintra/LimsProject/actions/workflows/ci.yml/badge.svg)](https://github.com/saulocintra/LimsProject/actions)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
@@ -13,7 +15,7 @@
 
 ## 🎯 O que o sistema resolve
 
-Empresas de cannabis precisam provar — para reguladores e clientes — onde cada grama veio, como foi cultivado e quais análises liberaram o lote para venda. Este LIMS implementa:
+Indústrias reguladas (cânhamo industrial, farma, alimentos, dispositivos médicos) precisam provar a reguladores **onde cada lote veio, como foi processado e quais análises liberaram a venda**. Este LIMS implementa o padrão arquitetural completo dessa exigência:
 
 - **Ciclo de vida do lote** como máquina de estados: `Germination → Growth → Harvested → Testing → Released | Rejected`. Transições inválidas retornam **422 Unprocessable Entity**.
 - **Audit trail completo**: toda mudança de status grava quem, quando e por quê (incluindo a criação inicial e mudanças automáticas via análise laboratorial).
