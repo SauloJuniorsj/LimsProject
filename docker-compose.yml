@@ -3,15 +3,15 @@ services:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: lims_user
-      POSTGRES_PASSWORD: lims_password
-      POSTGRES_DB: lims_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U lims_user -d lims_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -22,16 +22,16 @@ services:
     ports:
       - "8080:8080"
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Default: "Host=db;Database=lims_db;Username=lims_user;Password=lims_password"
-      Jwt__Key: "lims-super-secret-jwt-key-that-is-at-least-32-chars!!"
-      Jwt__Issuer: LimsProject
-      Jwt__Audience: LimsProject
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__Default: "Host=db;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: ${JWT_ISSUER:-LimsProject}
+      Jwt__Audience: ${JWT_AUDIENCE:-LimsProject}
       RabbitMq__Enabled: "true"
       RabbitMq__Host: broker
       RabbitMq__Port: "5672"
-      RabbitMq__User: guest
-      RabbitMq__Password: guest
+      RabbitMq__User: ${RABBITMQ_USER:-guest}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
       db:
         condition: service_healthy
@@ -41,6 +41,9 @@ services:
   broker:
     image: rabbitmq:3-management
     restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
     ports:
       - "5672:5672"
       - "15672:15672"

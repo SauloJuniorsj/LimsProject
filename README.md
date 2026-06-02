@@ -173,6 +173,19 @@ Mesma origin que a API via Vite proxy (zero CORS). Páginas: login, dashboard (K
 
 ## 🐳 Como rodar
 
+### Setup inicial (uma vez só)
+
+Antes do primeiro `docker-compose up`, crie seu `.env` local a partir do template:
+
+```bash
+cp .env.example .env
+# abra .env e ajuste os valores (especialmente JWT_KEY e POSTGRES_PASSWORD)
+```
+
+O arquivo `.env` é **gitignored** — credenciais nunca vão pro repositório. O template `.env.example` é commitado pra documentar quais variáveis o sistema espera.
+
+> **Em produção**: NÃO suba `.env`. Cadastre as variáveis no sistema de secrets da plataforma (Fly.io `fly secrets set`, Railway/Render dashboard, AWS Secrets Manager, etc.). O código lê de env vars independente da origem.
+
 ### Opção 1: docker-compose (tudo em um comando)
 
 ```bash
