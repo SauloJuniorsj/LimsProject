@@ -1,10 +1,14 @@
 # 🧪 LIMS — Laboratory Information Management System
 
+<p align="right">
+  <strong>🇧🇷 Português</strong> · <a href="README.en.md">🇬🇧 English</a>
+</p>
+
 **LIMS production-grade explorando padrões de compliance em indústria regulada** — audit trail cross-cutting, outbox pattern transacional, refresh tokens com rotation OWASP-grade, soft delete com query filter global, OpenTelemetry, healthchecks customizados.
 
 > **Case study escolhido:** cânhamo industrial (limite legal THC ≤ 0.3%). O domínio foi escolhido por ter **a regulação mais rica e fora-do-óbvio** do momento — força decisões de modelagem que um CRUD genérico não força.
 
-[![CI](https://github.com/saulocintra/LimsProject/actions/workflows/ci.yml/badge.svg)](https://github.com/saulocintra/LimsProject/actions)
+[![CI](https://github.com/SauloJuniorsj/LimsProject/actions/workflows/ci.yml/badge.svg)](https://github.com/SauloJuniorsj/LimsProject/actions)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![Postgres](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
 ![Tests](https://img.shields.io/badge/tests-138%20passing-brightgreen)
@@ -223,7 +227,7 @@ Configurações relevantes em `appsettings.json` ou variáveis de ambiente:
 dotnet test
 ```
 
-90 testes cobrindo:
+138 testes (backend) + 14 (frontend, Vitest) cobrindo:
 
 - **Unit tests** (validators): `BatchValidator`, `LabAnalysisValidator`, `SensorReadingValidator`, `RollupService`, `RollupWorker` (com NSubstitute)
 - **Integration tests** (TestServer + EF InMemory): auth, batches CRUD/paginação/filtros/transições, análises, sensor data, daily summaries, status history, segurança (401/403)
