@@ -3,7 +3,7 @@ using System.Text.Json;
 using FluentAssertions;
 using LimsProject.Application.Events;
 using LimsProject.Application.Interfaces;
-using LimsProject.Application.Workers;
+using LimsProject.Infrastructure.Workers;
 using LimsProject.Domain.Entities;
 using LimsProject.Infrastructure.Messaging;
 using LimsProject.Infrastructure.Persistence;

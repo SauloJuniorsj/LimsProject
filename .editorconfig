@@ -1,0 +1,8 @@
+root = true
+
+[*.cs]
+# Cyclomatic complexity (classical McCabe)
+dotnet_diagnostic.S1541.severity = warning
+
+# Cognitive complexity (Sonar's modern metric — penalizes nesting more than branching)
+dotnet_diagnostic.S3776.severity = warning

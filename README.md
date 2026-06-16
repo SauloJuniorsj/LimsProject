@@ -110,7 +110,7 @@ sequenceDiagram
 
 | Camada | Tecnologia |
 |---|---|
-| Runtime | .NET 10, ASP.NET Core Minimal APIs |
+| Runtime | .NET 10, ASP.NET Core (Controllers + Asp.Versioning.Mvc) |
 | Persistência | PostgreSQL 16 + Entity Framework Core 10 (Npgsql) |
 | Autenticação | ASP.NET Core Identity + JWT Bearer (access 1h) + **refresh tokens com rotation + reuse detection (OWASP)** + Roles (`Admin`, `Lab`) |
 | Validação | FluentValidation (validators no Application layer) |
@@ -227,12 +227,13 @@ Configurações relevantes em `appsettings.json` ou variáveis de ambiente:
 dotnet test
 ```
 
-138 testes (backend) + 14 (frontend, Vitest) cobrindo:
+143 testes (backend) + 14 (frontend, Vitest) cobrindo:
 
 - **Unit tests** (validators): `BatchValidator`, `LabAnalysisValidator`, `SensorReadingValidator`, `RollupService`, `RollupWorker` (com NSubstitute)
 - **Integration tests** (TestServer + EF InMemory): auth, batches CRUD/paginação/filtros/transições, análises, sensor data, daily summaries, status history, segurança (401/403)
+- **Architecture fitness tests** (NetArchTest): enforçam o grafo Onion (Domain não conhece outras camadas, Application não vê Infrastructure/API, Infrastructure não vê API, entidades são POCOs sem EF Core). PR que viola **quebra o build**.
 
-Coverage com exclusões (migrations, generated files) via `coverlet.runsettings`.
+Coverage com exclusões (migrations, generated files) via `coverlet.runsettings`. **Gate de CI: line coverage < 90% reprova o build** (baseline atual: 96%).
 
 ---
 
@@ -358,7 +359,7 @@ A identidade do usuário vem via `ICurrentUserService` (abstrai `IHttpContextAcc
 - **InMemory provider em Testing**: `Program.cs` só registra Npgsql fora do ambiente `Testing`, evitando o conflito `IDatabaseProvider` quando o `WebApplicationFactory` injeta o InMemory provider.
 - **`IServiceScopeFactory` no worker**: `RollupWorker` é singleton mas precisa de `DbContext` (scoped) — cria um scope por iteração, com try/catch e intervalo configurável.
 - **`StatusHistoryRecorder` estático**: cross-cutting concern simples para gravar auditoria sem ServiceLocator nem MediatR; recebe `ClaimsPrincipal` para capturar o usuário sem acoplar à `HttpContext`.
-- **Máquina de estados explícita**: dicionário de transições válidas em `BatchEndpoints` evita lógica espalhada e devolve mensagem clara das opções permitidas.
+- **Máquina de estados explícita**: dicionário de transições válidas em `BatchesController` evita lógica espalhada e devolve mensagem clara das opções permitidas.
 
 ---
 

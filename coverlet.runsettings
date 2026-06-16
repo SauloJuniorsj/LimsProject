@@ -7,10 +7,14 @@
           <ExcludeByFile>
             **/Migrations/**/*.cs,
             **/*.Designer.cs,
-            **/AppDbContextModelSnapshot.cs
+            **/AppDbContextModelSnapshot.cs,
+            **/DebugController.cs
           </ExcludeByFile>
           <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
-          <Exclude>[*]LimsProject.Migrations.*,[*]Microsoft.AspNetCore.OpenApi.*,[*]System.Runtime.CompilerServices.*</Exclude>
+          <!-- Excluídos por design (não exercitados em Testing env):
+               • DebugController     : seed dev-only, sem propósito em testes
+               • RabbitMq*           : broker off em Testing, NullEventPublisher cobre o path -->
+          <Exclude>[*]LimsProject.Migrations.*,[*]Microsoft.AspNetCore.OpenApi.*,[*]System.Runtime.CompilerServices.*,[*]LimsProject.API.Controllers.DebugController,[*]LimsProject.Infrastructure.Messaging.RabbitMqClient,[*]LimsProject.Infrastructure.HealthChecks.RabbitMqHealthCheck</Exclude>
           <IncludeTestAssembly>false</IncludeTestAssembly>
         </Configuration>
       </DataCollector>

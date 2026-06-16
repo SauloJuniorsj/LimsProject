@@ -110,7 +110,7 @@ sequenceDiagram
 
 | Layer | Technology |
 |---|---|
-| Runtime | .NET 10, ASP.NET Core Minimal APIs |
+| Runtime | .NET 10, ASP.NET Core (Controllers + Asp.Versioning.Mvc) |
 | Persistence | PostgreSQL 16 + Entity Framework Core 10 (Npgsql) |
 | Authentication | ASP.NET Core Identity + JWT Bearer (1h access) + **refresh tokens with rotation + reuse detection (OWASP)** + Roles (`Admin`, `Lab`) |
 | Validation | FluentValidation (validators in the Application layer) |
@@ -227,12 +227,13 @@ Relevant config in `appsettings.json` or env vars:
 dotnet test
 ```
 
-138 tests (backend) + 14 (frontend, Vitest) covering:
+143 tests (backend) + 14 (frontend, Vitest) covering:
 
 - **Unit tests** (validators): `BatchValidator`, `LabAnalysisValidator`, `SensorReadingValidator`, `RollupService`, `RollupWorker` (with NSubstitute)
 - **Integration tests** (TestServer + EF InMemory): auth, batches CRUD/pagination/filters/transitions, analyses, sensor data, daily summaries, status history, security (401/403)
+- **Architecture fitness tests** (NetArchTest): enforce the Onion dependency graph (Domain knows no other layer, Application doesn't see Infrastructure/API, Infrastructure doesn't see API, entities are POCOs free of EF Core). PRs that violate **break the build**.
 
-Coverage with exclusions (migrations, generated files) via `coverlet.runsettings`.
+Coverage with exclusions (migrations, generated files) via `coverlet.runsettings`. **CI gate: line coverage < 90% fails the build** (current baseline: 96%).
 
 ---
 
@@ -358,7 +359,7 @@ The **global query filter** `b => b.DeletedAt == null` on `Batch` makes `db.Batc
 - **InMemory provider in Testing**: `Program.cs` only registers Npgsql outside the `Testing` environment, avoiding the `IDatabaseProvider` conflict when `WebApplicationFactory` injects the InMemory provider.
 - **`IServiceScopeFactory` in the worker**: `RollupWorker` is a singleton but needs a `DbContext` (scoped) — it creates a scope per iteration, with try/catch and a configurable interval.
 - **Static `StatusHistoryRecorder`**: a simple cross-cutting concern for writing audit entries without ServiceLocator or MediatR; takes `ClaimsPrincipal` to capture the user without coupling to `HttpContext`.
-- **Explicit state machine**: a dictionary of valid transitions in `BatchEndpoints` avoids logic scattered across the code and returns a clear message describing the allowed options.
+- **Explicit state machine**: a dictionary of valid transitions in `BatchesController` avoids logic scattered across the code and returns a clear message describing the allowed options.
 
 ---
 

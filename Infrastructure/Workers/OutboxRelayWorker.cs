@@ -4,7 +4,7 @@ using LimsProject.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace LimsProject.Application.Workers;
+namespace LimsProject.Infrastructure.Workers;
 
 /// <summary>
 /// Despacha mensagens da tabela OutboxMessages pro RabbitMQ.
