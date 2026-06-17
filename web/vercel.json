@@ -3,23 +3,23 @@
   "rewrites": [
     {
       "source": "/auth/:path*",
-      "destination": "https://limsproject.onrender.com/auth/:path*"
+      "destination": "https://limsproject-njmj.onrender.com/auth/:path*"
     },
     {
       "source": "/batches/:path*",
-      "destination": "https://limsproject.onrender.com/batches/:path*"
+      "destination": "https://limsproject-njmj.onrender.com/batches/:path*"
     },
     {
       "source": "/users/:path*",
-      "destination": "https://limsproject.onrender.com/users/:path*"
+      "destination": "https://limsproject-njmj.onrender.com/users/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://limsproject.onrender.com/health"
+      "destination": "https://limsproject-njmj.onrender.com/health"
     },
     {
       "source": "/swagger/:path*",
-      "destination": "https://limsproject.onrender.com/swagger/:path*"
+      "destination": "https://limsproject-njmj.onrender.com/swagger/:path*"
     }
   ]
 }
