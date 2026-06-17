@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/auth/:path*",
+      "destination": "https://limsproject.onrender.com/auth/:path*"
+    },
+    {
+      "source": "/batches/:path*",
+      "destination": "https://limsproject.onrender.com/batches/:path*"
+    },
+    {
+      "source": "/users/:path*",
+      "destination": "https://limsproject.onrender.com/users/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://limsproject.onrender.com/health"
+    },
+    {
+      "source": "/swagger/:path*",
+      "destination": "https://limsproject.onrender.com/swagger/:path*"
+    }
+  ]
+}

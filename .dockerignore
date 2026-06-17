@@ -4,5 +4,9 @@
 **/obj
 **/TestResults
 LimsProjectTests/
+web/
 .github/
 *.md
+.env
+.env.*
+!.env.example

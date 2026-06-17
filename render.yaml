@@ -1,0 +1,46 @@
+# Render Blueprint — provisiona o backend .NET via Dockerfile.
+# Documentação: https://render.com/docs/yaml-spec
+#
+# Esse arquivo é OPCIONAL — você pode criar o serviço manualmente pelo dashboard.
+# Mas mantê-lo aqui garante que próximos deploys sejam reproduzíveis e documenta
+# quais env vars o sistema precisa.
+#
+# Como usar:
+# 1. Cria conta no Render.com (login com GitHub, SEM cartão)
+# 2. New → Blueprint → seleciona este repo → confirma
+# 3. Marca como "sync: false" pede pra colar manualmente — entra com:
+#    - Jwt__Key (gera nova, NUNCA reusa a de dev)
+#    - ConnectionStrings__Default (pega no Neon após criar o Postgres)
+
+services:
+  - type: web
+    name: limsproject
+    runtime: docker
+    region: oregon       # US-West (BR não tem região free; oregon ou virginia)
+    plan: free           # 512MB RAM, 0.1 CPU, dorme após 15min de ociosidade
+    branch: main
+    autoDeploy: true     # push na main = redeploy automático
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+      - key: Jwt__Issuer
+        value: LimsProject
+      - key: Jwt__Audience
+        value: LimsProject
+      - key: RabbitMq__Enabled
+        value: "false"          # broker não roda no Render free
+      - key: RateLimit__LoginPerMinute
+        value: "100"            # mais frouxo pra demo
+      - key: Rollup__IntervalSeconds
+        value: "60"
+
+      # ⬇️ secrets — colar no dashboard, não fica no git
+      - key: Jwt__Key
+        sync: false             # gera novo com `openssl rand -base64 48`
+      - key: ConnectionStrings__Default
+        sync: false             # vem do Neon (formato Npgsql, ver README)

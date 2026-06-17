@@ -177,6 +177,36 @@ Mesma origin que a API via Vite proxy (zero CORS). Páginas: login, dashboard (K
 
 ---
 
+## 🌐 Live Deploy (free tier, sem cartão)
+
+Setup recomendado pra hospedagem free real:
+
+| Camada | Onde | Custo |
+|---|---|---|
+| **Frontend** (`web/`) | [Vercel](https://vercel.com) (Hobby) | R$ 0 |
+| **Backend** (.NET API) | [Render](https://render.com) (Free Web Service via Docker) | R$ 0 |
+| **PostgreSQL** | [Neon](https://neon.tech) (free tier, 500MB, persistente) | R$ 0 |
+| **RabbitMQ** | Desabilitado em prod (`RabbitMq__Enabled=false`) — `NullEventPublisher` no lugar | — |
+
+**Manifest do Render:** [`render.yaml`](render.yaml) (Blueprint).
+**Proxy do Vercel:** [`web/vercel.json`](web/vercel.json) — reescreve `/auth/*`, `/batches/*`, `/users/*` etc pro backend Render, mantendo o browser em **same-origin** (cookies HttpOnly funcionam, zero CORS).
+
+> ⚠️ **Trade-off**: Render free **dorme após 15min** de inatividade — primeira request após sleep acorda em ~30-60s (cold start do .NET 10). Aceitável pra demo de portfolio.
+
+### Passo a passo
+
+1. **Neon** (Postgres) — cria projeto, copia connection string no formato Npgsql:
+   ```
+   Host=ep-xxx.neon.tech;Database=lims;Username=lims_owner;Password=...;SSL Mode=Require;Trust Server Certificate=true
+   ```
+2. **Render** — `New → Blueprint`, seleciona este repo, ele lê `render.yaml`. Cola as 2 env vars marcadas `sync: false`:
+   - `Jwt__Key`: gera uma nova com `openssl rand -base64 48`
+   - `ConnectionStrings__Default`: a string do Neon
+3. **Vercel** — `New Project`, seleciona o repo, `Root Directory = web`, framework `Vite`. Build automático.
+4. **Atualiza `vercel.json`** se o subdomínio do Render for diferente de `limsproject.onrender.com`.
+
+---
+
 ## 🐳 Como rodar
 
 ### Setup inicial (uma vez só)
