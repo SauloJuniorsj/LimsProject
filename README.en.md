@@ -36,10 +36,12 @@ Tip: open an active batch and click **"▶ Simulate sensor"** to watch synthetic
   <tr>
     <td><img src="docs/screenshots/login.png" alt="Login screen with demo accounts"></td>
     <td><img src="docs/screenshots/dashboard.png" alt="Dashboard with KPIs and activity chart"></td>
+    <td><img src="docs/screenshots/batches.png" alt="Batch list with filters and pagination"></td>
   </tr>
   <tr>
     <td align="center"><sub>Login with demo accounts (one click)</sub></td>
     <td align="center"><sub>Dashboard — KPIs and last-30-days activity</sub></td>
+    <td align="center"><sub>Batch list — filters and pagination</sub></td>
   </tr>
 </table>
 

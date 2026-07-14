@@ -36,10 +36,12 @@ Dica: abra um lote em estado ativo e clique em **"▶ Simular sensor"** pra ver 
   <tr>
     <td><img src="docs/screenshots/login.png" alt="Tela de login com contas de demonstração"></td>
     <td><img src="docs/screenshots/dashboard.png" alt="Dashboard com KPIs e gráfico de atividade"></td>
+    <td><img src="docs/screenshots/batches.png" alt="Lista de lotes com filtros e paginação"></td>
   </tr>
   <tr>
     <td align="center"><sub>Login com contas demo (1 clique)</sub></td>
     <td align="center"><sub>Dashboard — KPIs e atividade dos últimos 30 dias</sub></td>
+    <td align="center"><sub>Lista de lotes — filtros e paginação</sub></td>
   </tr>
 </table>
 
