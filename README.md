@@ -28,6 +28,21 @@ Contas de demonstração (1 clique na tela de login, sem cadastro):
 
 Dica: abra um lote em estado ativo e clique em **"▶ Simular sensor"** pra ver telemetria sintética chegando ao vivo no gráfico e na tabela.
 
+<p align="center">
+  <img src="docs/screenshots/sensor-simulator.gif" alt="Simulador de sensor rodando ao vivo — gráfico e badge 'ao vivo' atualizando em tempo real" width="760">
+</p>
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/login.png" alt="Tela de login com contas de demonstração"></td>
+    <td><img src="docs/screenshots/dashboard.png" alt="Dashboard com KPIs e gráfico de atividade"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Login com contas demo (1 clique)</sub></td>
+    <td align="center"><sub>Dashboard — KPIs e atividade dos últimos 30 dias</sub></td>
+  </tr>
+</table>
+
 ---
 
 ## 🎯 O que o sistema resolve

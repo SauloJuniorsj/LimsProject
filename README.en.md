@@ -28,6 +28,21 @@ Demo accounts (one click on the login screen, no sign-up needed):
 
 Tip: open an active batch and click **"▶ Simulate sensor"** to watch synthetic telemetry arrive live on the chart and table.
 
+<p align="center">
+  <img src="docs/screenshots/sensor-simulator.gif" alt="Sensor simulator running live — chart and 'live' badge updating in real time" width="760">
+</p>
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/login.png" alt="Login screen with demo accounts"></td>
+    <td><img src="docs/screenshots/dashboard.png" alt="Dashboard with KPIs and activity chart"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Login with demo accounts (one click)</sub></td>
+    <td align="center"><sub>Dashboard — KPIs and last-30-days activity</sub></td>
+  </tr>
+</table>
+
 ---
 
 ## 🎯 What this system solves
