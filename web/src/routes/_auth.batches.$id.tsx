@@ -15,6 +15,7 @@ import { NewAnalysisForm } from "@/components/NewAnalysisForm";
 import { SensorDataChart } from "@/components/SensorDataChart";
 import { SensorReadingInput } from "@/components/SensorReadingInput";
 import { SensorReadingsTable } from "@/components/SensorReadingsTable";
+import { SensorSimulator } from "@/components/SensorSimulator";
 import { fmtDateTime, fmtPercent, fmtTemperature } from "@/lib/format";
 import { ApiError } from "@/lib/api";
 import { BatchStatus, BatchStatusLabel, type BatchStatusValue } from "@/types/api";
@@ -36,7 +37,8 @@ const transitions: Record<BatchStatusValue, BatchStatusValue[]> = {
 function BatchDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const { data: batch, isLoading } = useBatchSummary(id);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const { data: batch, isLoading } = useBatchSummary(id, { refetchInterval: isSimulating ? 4000 : false });
   const { data: analyses } = useBatchAnalyses(id);
   const { data: history } = useBatchStatusHistory(id);
   const update = useUpdateBatchStatus(id);
@@ -186,13 +188,16 @@ function BatchDetail() {
         {/* Telemetria — só faz sentido nos estados ativos */}
         {!isTerminal && (
           <>
+            <div className="flex justify-end">
+              <SensorSimulator batchId={id} onActiveChange={setIsSimulating} />
+            </div>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="lg:col-span-2">
-                <SensorDataChart batchId={id} />
+                <SensorDataChart batchId={id} live={isSimulating} />
               </div>
               <SensorReadingInput batchId={id} />
             </div>
-            <SensorReadingsTable batchId={id} />
+            <SensorReadingsTable batchId={id} live={isSimulating} />
           </>
         )}
 

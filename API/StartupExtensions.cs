@@ -169,6 +169,15 @@ internal static class StartupExtensions
         return services;
     }
 
+    // Credenciais fixas de demonstração — mesmos valores exibidos na tela de login
+    // (web/src/routes/login.tsx). Existem pra qualquer visitante (recrutador incluso)
+    // entrar sem precisar de cadastro. Nunca usar esse padrão com dado real em produção.
+    private static readonly (string Email, string Password, string Role)[] DemoUsers =
+    [
+        ("admin@lims.demo", "Demo1234", "Admin"),
+        ("lab@lims.demo", "Demo1234", "Lab"),
+    ];
+
     public static async Task EnsureSeededAsync(this WebApplication app)
     {
         await using var scope = app.Services.CreateAsyncScope();
@@ -184,6 +193,24 @@ internal static class StartupExtensions
         {
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole(role));
+        }
+
+        if (!app.Environment.IsEnvironment("Testing"))
+            await SeedDemoUsersAsync(scope.ServiceProvider);
+    }
+
+    private static async Task SeedDemoUsersAsync(IServiceProvider services)
+    {
+        var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
+
+        foreach (var (email, password, role) in DemoUsers)
+        {
+            if (await userManager.FindByEmailAsync(email) is not null) continue;
+
+            var user = new IdentityUser { Email = email, UserName = email, EmailConfirmed = true };
+            var result = await userManager.CreateAsync(user, password);
+            if (result.Succeeded)
+                await userManager.AddToRoleAsync(user, role);
         }
     }
 }

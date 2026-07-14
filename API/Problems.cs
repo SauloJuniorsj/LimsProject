@@ -30,4 +30,18 @@ internal static class Problems
         {
             ["currentStatus"] = status.ToString()
         });
+
+    public static IResult SimulationAlreadyRunning() => Results.Problem(
+        statusCode: StatusCodes.Status409Conflict,
+        title: "Simulation already running",
+        detail: "Já existe uma simulação de sensor em andamento pra este lote.");
+
+    public static IResult BatchTerminal(BatchStatus status) => Results.Problem(
+        statusCode: StatusCodes.Status409Conflict,
+        title: "Batch is terminal",
+        detail: $"Lote em estado terminal ({status}) não aceita simulação de sensor.",
+        extensions: new Dictionary<string, object?>
+        {
+            ["currentStatus"] = status.ToString()
+        });
 }

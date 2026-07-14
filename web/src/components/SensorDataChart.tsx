@@ -14,8 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Thermometer } from "lucide-react";
 
-export function SensorDataChart({ batchId }: { batchId: string }) {
-  const { data, isLoading } = useDailySummaries(batchId);
+export function SensorDataChart({ batchId, live }: { batchId: string; live?: boolean }) {
+  const { data, isLoading } = useDailySummaries(batchId, { refetchInterval: live ? 4000 : false });
 
   // Transforma min/max em range pra plotar como Area + linha de média no centro
   const chartData = (data ?? []).slice().reverse().map((s) => ({
@@ -32,6 +32,11 @@ export function SensorDataChart({ batchId }: { batchId: string }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Thermometer className="h-4 w-4" /> Telemetria diária
+          {live && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> ao vivo
+            </span>
+          )}
         </CardTitle>
         <CardDescription>
           Consolidado por dia (min / média / máx) — atualizado pelo RollupWorker no backend

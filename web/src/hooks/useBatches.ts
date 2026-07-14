@@ -26,11 +26,12 @@ export function useBatchesList(params: BatchListParams) {
   });
 }
 
-export function useBatchSummary(id: string) {
+export function useBatchSummary(id: string, opts?: { refetchInterval?: number | false }) {
   return useQuery({
     queryKey: ["batch", id, "summary"],
     queryFn: () => api<Batch>(`/batches/${id}/summary`),
     enabled: !!id,
+    refetchInterval: opts?.refetchInterval,
   });
 }
 

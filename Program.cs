@@ -31,6 +31,7 @@ builder.Services.AddLimsIdentityAndAuth(builder.Configuration);
 // Application services + validators
 builder.Services.AddScoped<IRollupService, RollupService>();
 builder.Services.AddHostedService<RollupWorker>();
+builder.Services.AddSingleton<ISensorSimulationService, SensorSimulationService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 builder.Services.AddSingleton<LimsMetrics>();

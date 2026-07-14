@@ -6,6 +6,7 @@ using LimsProject.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -18,6 +19,13 @@ public class LimsWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+
+        // Burst de simulação rápido nos testes (padrão prod é 12 ticks x 5s = 60s)
+        builder.ConfigureAppConfiguration(cfg => cfg.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Simulation:TickCount"] = "2",
+            ["Simulation:IntervalSeconds"] = "0",
+        }));
 
         builder.ConfigureServices(services =>
         {

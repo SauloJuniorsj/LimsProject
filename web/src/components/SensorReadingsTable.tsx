@@ -12,10 +12,12 @@ const MIN_OK = 18;
 const MAX_OK = 30;
 const isOutOfRange = (t: number) => t < MIN_OK || t > MAX_OK;
 
-export function SensorReadingsTable({ batchId }: { batchId: string }) {
+export function SensorReadingsTable({ batchId, live }: { batchId: string; live?: boolean }) {
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const { data, isLoading } = useSensorData(batchId, page, pageSize);
+  const { data, isLoading } = useSensorData(batchId, page, pageSize, {
+    refetchInterval: live ? 3000 : false,
+  });
 
   const outOfRangeCount = data?.items.filter((r) => isOutOfRange(r.temperature)).length ?? 0;
 
