@@ -480,3 +480,50 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Environment & Secrets (AIOX)
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# Dependencies (AIOX)
+node_modules
+
+# Build & Logs (AIOX)
+dist/
+build/
+logs/
+
+# AIOX Local (AIOX)
+.aiox-core/local/
+.claude/settings.local.json
+.aiox/install-log.txt
+
+# AIOX/Claude tooling scaffolding — gerado pelo instalador, não é código do projeto.
+# agent-memory em especial pode conter dados pessoais (nunca commitar).
+# .claude/skills/ e .claude/specs/ já tinham conteúdo próprio do projeto antes do AIOX
+# (ex.: write-tests-from-spec) — esses seguem versionados normalmente.
+.claude/agent-memory/
+.claude/agents/
+.claude/commands/
+.claude/hooks/
+.claude/rules/
+.claude/skills/
+.claude/CLAUDE.md
+.claude/settings.json
+AGENTS.md
+
+# AIOX framework install — regenerável via `npx aiox-core@latest install`, não é código
+# do projeto. node_modules já cai na regra genérica acima; isso cobre o resto (cli/core/
+# data/development/docs/etc — ~1.1k arquivos de metadata/scripts do próprio framework).
+.aiox-core/
+
+# IDE-sync gerado pelo AIOX (ideSync em core-config.yaml) — derivado de
+# .aiox-core/development/agents, regenerável.
+.antigravity/
+.codex/
+.cursor/
+.gemini/
+.kimi/
+.github/agents/
