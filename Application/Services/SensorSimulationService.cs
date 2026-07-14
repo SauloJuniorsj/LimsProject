@@ -65,9 +65,16 @@ public class SensorSimulationService(
 
                 if (!await RecordTickAsync(batchId, current)) break; // lote sumiu/virou terminal — para
 
+                // O RollupWorker consolida no seu próprio timer (minutos, em prod), que não é
+                // garantido bater dentro da janela de 60s do burst — sem isso o gráfico de
+                // "Telemetria diária" fica vazio na demo. Consolida aqui a cada poucos ticks
+                // pra o front ver o dado quase em tempo real, sem esperar o worker.
+                if (tick % 3 == 2) await ConsolidateAsync();
+
                 await Task.Delay(_interval);
             }
 
+            await ConsolidateAsync();
             logger.LogInformation("Simulação concluída para lote {BatchId} ({Ticks} leituras)", batchId, _tickCount);
         }
         catch (Exception ex)
@@ -77,6 +84,22 @@ public class SensorSimulationService(
         finally
         {
             lock (_lock) { _running.Remove(batchId); }
+        }
+    }
+
+    private async Task ConsolidateAsync()
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var rollupService = scope.ServiceProvider.GetRequiredService<IRollupService>();
+            await rollupService.ConsolidateDataAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            // Best-effort: se colidir com o RollupWorker rodando no mesmo instante, o próximo
+            // tick tenta de novo — não deve derrubar o burst de simulação por causa disso.
+            logger.LogWarning(ex, "Consolidação sob demanda falhou, seguindo o burst normalmente");
         }
     }
 

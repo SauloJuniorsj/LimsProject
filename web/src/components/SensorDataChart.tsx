@@ -47,7 +47,7 @@ export function SensorDataChart({ batchId, live }: { batchId: string; live?: boo
           <Skeleton className="h-64 w-full" />
         ) : chartData.length === 0 ? (
           <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
-            Sem consolidações diárias ainda. O worker roda a cada 60s — registre leituras e aguarde.
+            Sem consolidações diárias ainda. A consolidação roda em background — registre leituras (ou simule) e aguarde alguns segundos.
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
