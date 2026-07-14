@@ -11,9 +11,22 @@
 [![CI](https://github.com/SauloJuniorsj/LimsProject/actions/workflows/ci.yml/badge.svg)](https://github.com/SauloJuniorsj/LimsProject/actions)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![Postgres](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
-![Tests](https://img.shields.io/badge/tests-138%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-148%20passing-brightgreen)
 ![Release](https://img.shields.io/badge/release-v1.0.0-blue)
 ![Frontend](https://img.shields.io/badge/frontend-React%2019%20%2B%20Vite-61DAFB?logo=react)
+
+### 🚀 Demo ao vivo
+
+**[lims-project-rho.vercel.app](https://lims-project-rho.vercel.app/)** — backend no Render free tier, então a primeira request pode levar ~30-60s pra "acordar" (cold start).
+
+Contas de demonstração (1 clique na tela de login, sem cadastro):
+
+| Papel | Email | Senha |
+|---|---|---|
+| Admin | `admin@lims.demo` | `Demo1234` |
+| Lab (técnico) | `lab@lims.demo` | `Demo1234` |
+
+Dica: abra um lote em estado ativo e clique em **"▶ Simular sensor"** pra ver telemetria sintética chegando ao vivo no gráfico e na tabela.
 
 ---
 
@@ -28,6 +41,7 @@ Indústrias reguladas (cânhamo industrial, farma, alimentos, dispositivos médi
 - **Rollup em background**: consolida milhões de leituras de sensores em sumários diários (min/max/avg/count), processando apenas lotes ativos.
 - **Telemetria de cultivo**: cada leitura de temperatura atualiza `Batch.CurrentTemperature` e fica disponível paginada.
 - **Certificate of Analysis (CoA)**: endpoint único que agrega lote + análises + condições ambientais agregadas + ciclo de vida + compliance — o documento padrão da indústria.
+- **Simulador de sensor ao vivo**: dispara um burst de leituras sintéticas em background (`POST /sensor-data/simulate`) pra demonstrar telemetria + `RollupWorker` reagindo em tempo real, sem precisar de hardware.
 
 ---
 

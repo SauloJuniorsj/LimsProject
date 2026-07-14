@@ -11,9 +11,22 @@
 [![CI](https://github.com/SauloJuniorsj/LimsProject/actions/workflows/ci.yml/badge.svg)](https://github.com/SauloJuniorsj/LimsProject/actions)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![Postgres](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
-![Tests](https://img.shields.io/badge/tests-138%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-148%20passing-brightgreen)
 ![Release](https://img.shields.io/badge/release-v1.0.0-blue)
 ![Frontend](https://img.shields.io/badge/frontend-React%2019%20%2B%20Vite-61DAFB?logo=react)
+
+### 🚀 Live demo
+
+**[lims-project-rho.vercel.app](https://lims-project-rho.vercel.app/)** — backend runs on Render's free tier, so the first request may take ~30-60s to wake up (cold start).
+
+Demo accounts (one click on the login screen, no sign-up needed):
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@lims.demo` | `Demo1234` |
+| Lab (technician) | `lab@lims.demo` | `Demo1234` |
+
+Tip: open an active batch and click **"▶ Simulate sensor"** to watch synthetic telemetry arrive live on the chart and table.
 
 ---
 
@@ -28,6 +41,7 @@ Regulated industries (industrial hemp, pharma, food, medical devices) must prove
 - **Background rollup**: consolidates millions of sensor readings into daily summaries (min/max/avg/count), processing only active batches.
 - **Cultivation telemetry**: every temperature reading updates `Batch.CurrentTemperature` and is paginated.
 - **Certificate of Analysis (CoA)**: a single endpoint aggregating batch + analyses + aggregated environmental conditions + lifecycle + compliance — the industry-standard document.
+- **Live sensor simulator**: triggers a background burst of synthetic readings (`POST /sensor-data/simulate`) to demonstrate telemetry + `RollupWorker` reacting in real time, no hardware required.
 
 ---
 
